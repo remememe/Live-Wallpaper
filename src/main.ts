@@ -257,7 +257,7 @@ async openFilePicker() {
         }
 
         if (file.size > 12 * 1024 * 1024) {
-            alert('File is too large (max 5MB).');
+            alert('File is too large (max 12MB).');
             return;
         }
 

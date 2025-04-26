@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "minAppVersion": "1.1.0",
   "author": "Rememememe :3",
+  "authorUrl": "https://github.com/remememe",
   "description": "Add dynamic live wallpapers (images/videos) to your Obsidian workspace with customizable effects",
   "isDesktopOnly": true
 }

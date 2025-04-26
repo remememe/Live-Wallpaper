@@ -4,6 +4,5 @@
   "version": "1.0.0",
   "minAppVersion": "1.1.0",
   "description": "Add dynamic live wallpapers (images/videos) to your Obsidian workspace with customizable effects",
-  "author": "Your Name",
   "isDesktopOnly": true
 }

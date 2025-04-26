@@ -256,7 +256,7 @@ async openFilePicker() {
             return;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > 12 * 1024 * 1024) {
             alert('File is too large (max 5MB).');
             return;
         }
@@ -417,7 +417,7 @@ class LiveWallpaperSettingTab extends PluginSettingTab {
       });
       new Setting(containerEl)
       .setName('Reset Options')
-      .setDesc('Reset all settings')
+      .setDesc('Resets all settings')
       .addButton(Button =>
         Button.setButtonText('Reset').onClick(async () => {
           this.plugin.settings = {...DEFAULT_SETTINGS};

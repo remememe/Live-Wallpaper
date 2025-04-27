@@ -20,4 +20,5 @@
 ![](https://github.com/remememe/Obsidian-Live-Wallpaper/blob/main/Assets/sc3.png)
 
 **Dark Theme Recommended** 
+
 *Requires Obsidian 1.1.0+ and desktop (Windows/macOS/linux).*  

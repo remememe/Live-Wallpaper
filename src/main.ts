@@ -87,8 +87,6 @@ export default class LiveWallpaperPlugin extends Plugin {
     const appContainer = document.querySelector('.app-container');
     if (appContainer) appContainer.insertAdjacentElement('beforebegin', newContainer);
     else document.body.appendChild(newContainer);
-    this.applyTransparentBackgroundStyles();
-    this.ensureWindowControlsAccessibility();
     document.body.classList.add('live-wallpaper-active');
   
     this.lastPath = newPath;
@@ -98,36 +96,6 @@ export default class LiveWallpaperPlugin extends Plugin {
 private async ensureWallpaperFolderExists(): Promise<void> {
     const wallpaperFolder = `${this.manifest.dir}/wallpaper`;
     await this.app.vault.adapter.mkdir(wallpaperFolder).catch(() => {});
-}
-private ensureWindowControlsAccessibility() {
-    const style = document.createElement('style');
-    style.id = 'live-wallpaper-titlebar-styles';
-    style.textContent = `
-        .titlebar {
-            background-color: transparent !important;
-            position: relative; 
-            z-index: 99999;
-        }
-
-        .workspace-ribbon.side-dock-ribbon.mod-left {
-            background-color: transparent !important;
-        }
-        
-        .titlebar-button-container {
-            position: relative;
-            z-index: 9999;
-            -webkit-app-region: no-drag;
-        }
-
-        .titlebar-button {
-            color: var(--text-normal) !important;
-        }
-        
-        .titlebar-button:hover {
-            background-color: var(--background-modifier-hover) !important;
-        }
-    `;
-    document.head.appendChild(style);
 }
 
 private removeExistingWallpaperElements() {
@@ -188,54 +156,6 @@ private createMediaElement(): HTMLImageElement | HTMLVideoElement {
     return media;
 }
 
-private applyTransparentBackgroundStyles() {
-    const style = document.createElement('style');
-    style.id = 'live-wallpaper-overrides';
-    const isWindows = navigator.platform.includes('Win');
-    style.textContent = `
-        .app-container {
-            background-color: transparent !important;
-        }
-        
-        .live-wallpaper-active .titlebar {
-            background-color: transparent !important;
-            border-bottom: none !important;
-            -webkit-app-region: drag; 
-        }
-        
-        .titlebar-button-container {
-            position: relative;
-            z-index: 9999; 
-            -webkit-app-region: no-drag; 
-        }
-        
-        .titlebar-button {
-            color: var(--text-normal) !important;
-        }
-        
-        .titlebar-button:hover {
-            background-color: var(--background-modifier-hover) !important;
-        }
-        
-        .workspace-ribbon.mod-left,
-        .workspace-ribbon.mod-right {
-            background-color: transparent !important;
-        }
-        .titlebar{
-            position: fixed !important;
-            left: auto !important;
-            ${isWindows ? '-webkit-app-region: drag;' : ''}
-        }
-            #live-wallpaper-container {
-  transition: opacity 0.3s ease, filter 0.3s ease;
-}
-video#live-wallpaper-media {
-  transition: playback-rate 0.3s ease; /* choć playbackRate zmienia się bez migotania */
-}
-    `;
-    
-    document.head.appendChild(style);
-}
 
 async openFilePicker() {
     const fileInput = document.createElement('input');
@@ -327,7 +247,7 @@ class LiveWallpaperSettingTab extends PluginSettingTab {
     containerEl.empty();
   
     new Setting(containerEl)
-      .setName('Wallpaper Source')
+      .setName('Wallpaper source')
       .setDesc('Select an image, GIF, or video file to use as your wallpaper')
       .addButton(btn => btn
         .setButtonText('Browse')
@@ -337,7 +257,7 @@ class LiveWallpaperSettingTab extends PluginSettingTab {
       );
   
     new Setting(containerEl)
-      .setName('Wallpaper Opacity')
+      .setName('Wallpaper opacity')
       .setDesc('Controls the transparency level of the wallpaper (0% = fully transparent, 100% = fully visible)')
       .addSlider(slider => {
         const valueEl = containerEl.createEl('span', {
@@ -357,7 +277,7 @@ class LiveWallpaperSettingTab extends PluginSettingTab {
       });
   
     new Setting(containerEl)
-        .setName('Blur Radius')
+        .setName('Blur radius')
         .setDesc('Applies a blur effect to the wallpaper in pixels')
         .addSlider(slider => {
             const valueEl = containerEl.createEl('span', {
@@ -397,7 +317,7 @@ class LiveWallpaperSettingTab extends PluginSettingTab {
         });
 
     new Setting(containerEl)
-      .setName('Layer Position (Z‑Index)')
+      .setName('Layer position (z‑index)')
       .setDesc('Determines the stacking order: higher values bring the wallpaper closer to the front')
       .addSlider(slider => {
         const valueEl = containerEl.createEl('span', {
@@ -416,7 +336,7 @@ class LiveWallpaperSettingTab extends PluginSettingTab {
           });
       });
       new Setting(containerEl)
-      .setName('Reset Options')
+      .setName('Reset options')
       .setDesc('Resets all settings')
       .addButton(Button =>
         Button.setButtonText('Reset').onClick(async () => {

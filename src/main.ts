@@ -35,6 +35,8 @@ export default class LiveWallpaperPlugin extends Plugin {
   async unload()
   {
     this.removeExistingWallpaperElements();
+    document.body.classList.remove('live-wallpaper-active');
+    await super.unload(); 
   }
   async loadSettings() {
     this.settings = { ...DEFAULT_SETTINGS, ...await this.loadData() };

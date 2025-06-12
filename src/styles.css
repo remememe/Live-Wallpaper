@@ -46,3 +46,48 @@
 video#live-wallpaper-media {
     transition: playback-rate 0.3s ease;
 }
+.text-arena-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+
+.text-arena-table th, 
+.text-arena-table td {
+  border: 1px solid var(--background-modifier-border);
+  padding: 8px;
+  text-align: left;
+}
+
+.text-arena-table th {
+  background-color: var(--background-primary-alt);
+  font-weight: bold;
+}
+
+.text-arena-table tr:nth-child(even) {
+  background-color: var(--background-primary);
+}
+
+.text-arena-table tr:hover {
+  background-color: var(--background-secondary);
+}
+
+.text-arena-table .setting-item {
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.text-arena-table .setting-item-control {
+  width: 100%;
+}
+.EditCodeBlock {
+  background-color: #1e1e1e;
+  color: #dcdcdc;
+  padding: 10px;
+  border-radius: 6px;
+  font-family: monospace;
+  overflow-x: auto;
+  white-space: pre;
+  resize: none;
+}

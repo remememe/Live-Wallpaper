@@ -1,50 +1,47 @@
 .titlebar {
-    background-color: transparent !important;
-    position: fixed !important;
-    z-index: 99999;
-    left: auto !important;
+  background-color: transparent !important;
+  z-index: 99999;
 }
 
 .windows .titlebar {
-    -webkit-app-region: drag;
+  -webkit-app-region: drag;
 }
 
 .workspace-ribbon.side-dock-ribbon.mod-left,
 .workspace-ribbon.mod-left,
 .workspace-ribbon.mod-right {
-    background-color: transparent !important;
+  background-color: transparent !important;
 }
 
 .titlebar-button-container {
-    position: relative;
-    z-index: 9999;
-    -webkit-app-region: no-drag;
+  z-index: 9999;
+  -webkit-app-region: no-drag;
 }
 
 .titlebar-button {
-    color: var(--text-normal) !important;
+  color: var(--text-normal) !important;
 }
 
 .titlebar-button:hover {
-    background-color: var(--background-modifier-hover) !important;
+  background-color: var(--background-modifier-hover) !important;
 }
 
 .app-container {
-    background-color: transparent !important;
+  background-color: transparent !important;
 }
 
 .live-wallpaper-active .titlebar {
-    background-color: transparent !important;
-    border-bottom: none !important;
-    -webkit-app-region: drag;
+  background-color: transparent !important;
+  border-bottom: none !important;
+  -webkit-app-region: drag;
 }
 
 #live-wallpaper-container {
-    transition: opacity 0.3s ease, filter 0.3s ease;
+  transition: opacity 0.3s ease, filter 0.3s ease;
 }
 
 video#live-wallpaper-media {
-    transition: playback-rate 0.3s ease;
+  transition: playback-rate 0.3s ease;
 }
 .text-arena-table {
   width: 100%;

@@ -25,7 +25,19 @@
 - **Built-in CSS Editor**  
   - Live-edit your own CSS directly in the UI (real-time preview)  
 
-> **Note:** You may need to use dev tools (Ctrl + Shift + I) to inspect selectors and variables in your theme.
+  > **Note:** The built-in CSS editor has been removed in recent versions of the plugin to prevent accidental overwriting of user styles during updates. For full control, please use the snippet method described above.
+
+  ---
+
+  ### Optional: UI-based CSS customization
+
+  If you're looking for a graphical interface to tweak theme/plugin variables, try these community plugins:
+  
+  - **Style Settings**
+  - **CSS Snippets**
+
+  > **Tip:** You may need to use developer tools (Ctrl + Shift + I) to inspect selectors and variables in your theme.
+
 
 ---
 ## Installation  

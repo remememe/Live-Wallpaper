@@ -420,39 +420,6 @@ export default class LiveWallpaperPlugin extends Plugin {
       const Main = document.getElementById('live-wallpaper-container');
       Main?.parentElement?.style.removeProperty('background-color');
   }
-  async loadCssFileContent(): Promise<string> {
-    const path = this.getCssFilePath();
-    try {
-      return await this.app.vault.adapter.read(path);
-    } catch (e) {
-      console.error("Could not read styles.css:", e);
-      return "";
-    }
-  }
-  async saveCssFileContent(content: string): Promise<void> {
-    const path = this.getCssFilePath();
-    try {
-      await this.app.vault.adapter.write(path, content);
-    } catch (e) {
-      console.error("Could not write to styles.css:", e);
-    }
-  }
-  reloadCss() {
-    const id = "custom-plugin-style";
-    const old = document.getElementById(id);
-    if (old) old.remove();
-
-    const style = document.createElement("style");
-    style.id = id;
-
-    this.loadCssFileContent().then(css => {
-      style.textContent = css;
-      document.head.appendChild(style);
-    });
-  }
-  getCssFilePath(): string {
-    return `${this.app.vault.configDir}/plugins/live-wallpaper/styles.css`;
-  }
 }  
 class LiveWallpaperSettingTab extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
@@ -722,24 +689,6 @@ class LiveWallpaperSettingTab extends PluginSettingTab {
                 colorPickerRef.setValue('#000000'); 
               }
             })
-        );
-      const CodeSelection = advancedOptionsContainer.createDiv();
-      new Setting(CodeSelection)
-        .setName("Custom css editor")
-        .setClass("EditCodeBlock")
-        .setDesc("Edit custom CSS for the UI.")
-        .addTextArea(text => {
-          text.inputEl.style.width = "100%";
-          text.inputEl.style.height = "300px";
-          text.inputEl.style.resize = "none";
-          this.plugin.loadCssFileContent().then(content => {
-            text.setValue(content);
-          });
-
-          text.onChange(async (value) => {
-            await this.plugin.saveCssFileContent(value);
-            this.plugin.reloadCss(); 
-          });
-        });     
+        );  
     }
 }

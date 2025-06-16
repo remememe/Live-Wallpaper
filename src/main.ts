@@ -50,6 +50,7 @@ export default class LiveWallpaperPlugin extends Plugin {
   {
     await this.clearBackgroundColor();
     this.removeExistingWallpaperElements();
+    this.RemoveModalStyles();
     document.body.classList.remove('live-wallpaper-active');
     await this.LoadOrUnloadChanges(false);
     await super.unload(); 
@@ -383,9 +384,15 @@ export default class LiveWallpaperPlugin extends Plugin {
       else {
           this.LoadOrUnloadChanges(false);
           if (existingStyle) {
-              existingStyle.remove();
+            existingStyle.remove();
           }
       }
+  }
+  private RemoveModalStyles()
+  {
+      const styleId = "extrastyles-dynamic-css";
+      const existingStyle = document.getElementById(styleId);
+      existingStyle != null ? existingStyle.remove() : "";
   }
   public async applyBackgroundColor() {
       const existingElement = document.getElementById('live-wallpaper-container');

@@ -53,9 +53,9 @@
 
 **Dark Theme Recommended**  
 
-*Requires Obsidian version 1.1.0+ and works on both desktop (Windows/macOS/Linux) and mobile*
+*Requires version 1.1.0+ and works on both desktop (Windows/macOS/Linux) and mobile*
 
-> **Note:** The plugin now supports mobile devices (Obsidian Mobile on iOS/Android) in addition to desktop platforms.
+> **Note:** The plugin now supports mobile devices in addition to desktop platforms.
 
 *Contribution*
 Contributions are welcome! If you'd like to 

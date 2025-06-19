@@ -88,3 +88,13 @@ video#live-wallpaper-media {
   white-space: pre;
   resize: none;
 }
+body.is-mobile .workspace-drawer.mod-left,
+body.is-mobile .workspace-drawer.mod-right,
+body.is-mobile .vertical-tab-content-container,
+body.is-mobile .modal-header {
+  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.7);
+}
+body.is-mobile .menu{
+  background: rgba(0, 0, 0, 0.7);
+}

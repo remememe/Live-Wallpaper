@@ -45,10 +45,19 @@
 2. Copy `main.js` and `manifest.json` to:  
    `/plugins/live-wallpaper/`  
 
+![](https://github.com/remememe/Live-Wallpaper/blob/main/Assets/sc4.png)
 ![](https://github.com/remememe/Live-Wallpaper/blob/main/Assets/sc2.png)
 ![](https://github.com/remememe/Live-Wallpaper/blob/main/Assets/sc1.gif)
 ![](https://github.com/remememe/Live-Wallpaper/blob/main/Assets/sc3.png)
 
+
 **Dark Theme Recommended**  
 
-*Requires version 1.1.0+ and desktop (Windows/macOS/Linux).*  
+*Requires Obsidian version 1.1.0+ and works on both desktop (Windows/macOS/Linux) and mobile*
+
+> **Note:** The plugin now supports mobile devices (Obsidian Mobile on iOS/Android) in addition to desktop platforms.
+
+*Contribution*
+Contributions are welcome! If you'd like to 
+help improve the plugin, feel free to open an issue or 
+submit a pull request on GitHub. Bug fixes, new features, performance improvements!!.

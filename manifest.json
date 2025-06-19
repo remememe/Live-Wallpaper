@@ -1,10 +1,10 @@
 {
   "id": "live-wallpaper",
   "name": "Live Background",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "minAppVersion": "1.1.0",
   "author": "Rememememe :3",
   "authorUrl": "https://github.com/remememe",
   "description": "Add dynamic live wallpapers (images/videos) to your workspace with customizable effects",
-  "isDesktopOnly": true
+  "isDesktopOnly": false
 }

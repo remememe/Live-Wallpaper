@@ -1,4 +1,4 @@
-import { Plugin, PluginSettingTab, Setting, App, ColorComponent } from 'obsidian';
+import { Plugin, PluginSettingTab, Setting, App, ColorComponent,Platform} from 'obsidian';
 import { serialize } from 'v8';
 interface TextArenaEntry {
   target: string;
@@ -12,6 +12,8 @@ interface LiveWallpaperPluginSettings {
   zIndex: number;
   blurRadius: number;       
   brightness: number;     
+  mobileBackgroundWidth: string;
+  mobileBackgroundHeight: string;
   AdnvOpend: boolean;
   TextArenas: TextArenaEntry[];
   Color: string;
@@ -25,6 +27,8 @@ const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   zIndex: 0,
   blurRadius: 8,            
   brightness: 100,    
+  mobileBackgroundWidth: '100vw',
+  mobileBackgroundHeight: '100vh',
   AdnvOpend: false,
   TextArenas: [
       { target: "", attribute: "" }
@@ -44,6 +48,7 @@ export default class LiveWallpaperPlugin extends Plugin {
       this.registerEvent(
           this.app.workspace.on('css-change', () => this.applyWallpaper())
       );
+      this.ChangeWallpaperContainer();
       await this.applyBackgroundColor();
   }
   async unload()
@@ -161,6 +166,16 @@ export default class LiveWallpaperPlugin extends Plugin {
       });
       
       return container;
+  }
+  public ChangeWallpaperContainer() {
+    const container = document.getElementById('live-wallpaper-container');
+    if (container == null) return;
+    const width = this.settings.mobileBackgroundWidth || '100vw';
+    const height = this.settings.mobileBackgroundHeight || '100vh';
+    Object.assign(container.style, {
+      width,
+      height,
+    });
   }
   private createMediaElement(): HTMLImageElement | HTMLVideoElement {
       const isVideo = this.settings.wallpaperType === 'video';
@@ -370,7 +385,6 @@ export default class LiveWallpaperPlugin extends Plugin {
                   .modal-container.mod-dim {
                       background: rgba(0, 0, 0, 0.7);
                       backdrop-filter: blur(10px);
-                      border-radius: 12px;
                   }
                   .modal-container {
                       background: rgba(0, 0, 0, 0.7);
@@ -552,6 +566,48 @@ class LiveWallpaperSettingTab extends PluginSettingTab {
             }
           });
       });
+      if (Platform.isMobileApp) {
+        const desc = document.createElement("div");
+        desc.textContent = "On mobile devices, zooming can affect background size. You can manually set the height and width to maintain consistency.";
+
+        containerEl.appendChild(desc);
+
+        new Setting(containerEl)
+          .setName("Background width")
+          .setDesc("Set a custom width for the background on mobile (e.g., 100vw or 500px).")
+          .addText(text => text
+            .setPlaceholder("e.g., 100vw")
+            .setValue(this.plugin.settings.mobileBackgroundWidth || "")
+            .onChange(async (value) => {
+              this.plugin.settings.mobileBackgroundWidth = value;
+              await this.plugin.saveSettings();
+              this.plugin.ChangeWallpaperContainer(); 
+            }));
+
+        new Setting(containerEl)
+          .setName("Background height")
+          .setDesc("Set a custom height for the background on mobile (e.g., 100vh or 800px).")
+          .addText(text => text
+            .setPlaceholder("e.g., 100vh")
+            .setValue(this.plugin.settings.mobileBackgroundHeight || "")
+            .onChange(async (value) => {
+              this.plugin.settings.mobileBackgroundHeight = value;
+              await this.plugin.saveSettings();
+              this.plugin.ChangeWallpaperContainer();
+            }));
+        new Setting(containerEl)
+          .setName("Match screen size")
+          .setDesc("Automatically set the background size to match your device's screen dimensions.")
+          .addButton(button => button
+            .setButtonText("Resize to screen")
+            .onClick(async () => {
+              this.plugin.settings.mobileBackgroundHeight = window.innerHeight.toString() + "px";
+              this.plugin.settings.mobileBackgroundWidth = window.innerWidth.toString() + "px";
+              this.plugin.ChangeWallpaperContainer();
+              await this.plugin.saveSettings();
+              this.display();
+            }));
+      }
       new Setting(containerEl)
       .setName('Reset options')
       .setDesc('Resets all settings')
@@ -566,6 +622,8 @@ class LiveWallpaperSettingTab extends PluginSettingTab {
           this.plugin.settings.zIndex = defaults.zIndex;
           this.plugin.settings.blurRadius = defaults.blurRadius;
           this.plugin.settings.brightness = defaults.brightness;
+          this.plugin.settings.mobileBackgroundHeight = defaults.mobileBackgroundHeight;
+          this.plugin.settings.mobileBackgroundWidth = defaults.mobileBackgroundWidth;
 
           await this.plugin.saveSettings();
           this.plugin.applyWallpaper();

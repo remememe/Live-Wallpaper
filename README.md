@@ -2,13 +2,23 @@
 
 **Bring your notes to life** with animated wallpapers (e.g., swaying forests, flowing clouds, or cosmic visuals).  
 
-## Features  
-  - **Supports videos (mp4, webm)/GIFs/images** – use your own files or built-in templates  
-  - **Customizable effects**:  
-    - Opacity (0-80%)  
-    - Blur (0-20px)  
-    - Brightness/contrast    
-  - **Low CPU usage** – optimized for smooth performance  
+## Features
+- **Supports videos (MP4, WebM), GIFs, and images** — use your own files or choose from built-in templates
+- **Wallpaper history** — easily switch back to previously used wallpapers  
+  > **Note:** This feature is still experimental and may have bugs.
+- **Customizable effects:**
+  - Opacity (0–80%)
+  - Blur (0–20px)
+  - Brightness and contrast
+  - Adjustable playback speed *(videos only)*
+- **Low CPU usage** — optimized for smooth performance
+
+## Scheduled Themes
+> **Note:** This section is under construction!
+
+- **Day/Night Mode**  
+  Automatically switch between two wallpapers based on local time (default: 7 AM / 7 PM).  
+  *(Time configuration will be available soon.)*
 
 ## Experimental options
 *Deep customization for advanced users (basic CSS knowledge recommended).*

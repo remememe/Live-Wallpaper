@@ -2,7 +2,6 @@
   background-color: transparent !important;
   z-index: 99999;
 }
-
 .windows .titlebar {
   -webkit-app-region: drag;
 }

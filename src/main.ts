@@ -74,7 +74,6 @@ export default class LiveWallpaperPlugin extends Plugin {
   async onload() {
       await this.loadSettings();
       await this.ensureWallpaperFolderExists();
-
       const anyOptionEnabled = Object.values(this.settings.scheduledWallpapers.options).some(v => v === true);
 
       this.toggleModalStyles();
@@ -89,9 +88,18 @@ export default class LiveWallpaperPlugin extends Plugin {
         this.applyWallpaper(false);
       }
       this.registerEvent(
-          this.app.workspace.on('css-change', () => this.applyWallpaper(anyOptionEnabled))
+        this.app.workspace.on("css-change", () => {
+          const el = document.getElementById("live-wallpaper-container");
+          if (el) this.applyWallpaper(anyOptionEnabled);
+        })
       );
       this.ChangeWallpaperContainer();
+      this.removeExistingWallpaperElements();
+      const newContainer = this.createWallpaperContainer();
+      const appContainer = document.querySelector('.app-container');
+      if (appContainer) appContainer.insertAdjacentElement('beforebegin', newContainer);
+      else document.body.appendChild(newContainer);
+      document.body.classList.add('live-wallpaper-active');
       await this.applyBackgroundColor();
   }
   async unload()
@@ -183,7 +191,6 @@ export default class LiveWallpaperPlugin extends Plugin {
     if (appContainer) appContainer.insertAdjacentElement('beforebegin', newContainer);
     else document.body.appendChild(newContainer);
     document.body.classList.add('live-wallpaper-active');
-  
     this.lastPath = newPath;
     this.lastType = newType;
   }
@@ -215,7 +222,6 @@ export default class LiveWallpaperPlugin extends Plugin {
   private createWallpaperContainer(): HTMLElement {
       const container = document.createElement('div');
       container.id = 'live-wallpaper-container';
-      
       Object.assign(container.style, {
           position: 'fixed',
           top: '0',
@@ -228,7 +234,6 @@ export default class LiveWallpaperPlugin extends Plugin {
           pointerEvents: 'none',
           filter: `blur(${this.settings.blurRadius}px) brightness(${this.settings.brightness}%)`
       });
-      
       return container;
   }
   public ChangeWallpaperContainer() {

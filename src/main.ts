@@ -44,7 +44,7 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   wallpaperType: 'image',
   playbackSpeed: 1.0,
   opacity: 40,
-  zIndex: 0,
+  zIndex: 5,
   blurRadius: 8,            
   brightness: 100,    
   HistoryPaths: [],
@@ -78,6 +78,15 @@ export default class LiveWallpaperPlugin extends Plugin {
 
       this.toggleModalStyles();
       this.addSettingTab(new LiveWallpaperSettingManager(this.app, this));
+
+      this.ChangeWallpaperContainer();
+      this.removeExistingWallpaperElements();
+      const newContainer = this.createWallpaperContainer();
+      const appContainer = document.querySelector('.app-container');
+      if (appContainer) appContainer.insertAdjacentElement('beforebegin', newContainer);
+      else document.body.appendChild(newContainer);
+      document.body.classList.add('live-wallpaper-active');
+      
       if(anyOptionEnabled)
       {
         this.startDayNightWatcher();
@@ -93,13 +102,6 @@ export default class LiveWallpaperPlugin extends Plugin {
           if (el) this.applyWallpaper(anyOptionEnabled);
         })
       );
-      this.ChangeWallpaperContainer();
-      this.removeExistingWallpaperElements();
-      const newContainer = this.createWallpaperContainer();
-      const appContainer = document.querySelector('.app-container');
-      if (appContainer) appContainer.insertAdjacentElement('beforebegin', newContainer);
-      else document.body.appendChild(newContainer);
-      document.body.classList.add('live-wallpaper-active');
       await this.applyBackgroundColor();
   }
   async unload()
@@ -144,13 +146,11 @@ export default class LiveWallpaperPlugin extends Plugin {
         this.startDayNightWatcher();
       } 
       else {
-        this.removeExistingWallpaperElements();
         this.lastPath = this.lastType = null;
         return;
       }
     } 
     else if (!this.settings.wallpaperPath) {
-      this.removeExistingWallpaperElements();
       this.lastPath = this.lastType = null;
       return;
     } 
@@ -172,11 +172,13 @@ export default class LiveWallpaperPlugin extends Plugin {
       }
   
       if (newPath !== this.lastPath || newType !== this.lastType) {
-        const newMedia = this.createMediaElement();
-        container.replaceChild(newMedia, media);
-        media = newMedia;
-        this.lastPath = newPath;
-        this.lastType = newType;
+        const newMedia = await this.createMediaElement();
+        if (newMedia) {
+          container.replaceChild(newMedia, media);
+          media = newMedia;
+          this.lastPath = newPath;
+          this.lastType = newType;
+        }
       }
       await this.saveSettings();
       return;
@@ -184,9 +186,11 @@ export default class LiveWallpaperPlugin extends Plugin {
   
     this.removeExistingWallpaperElements();
     const newContainer = this.createWallpaperContainer();
-    const newMedia = this.createMediaElement();
-    newMedia.id = 'live-wallpaper-media';
-    newContainer.appendChild(newMedia);
+    const newMedia = await this.createMediaElement();
+    if (newMedia) {
+      newMedia.id = 'live-wallpaper-media';
+      newContainer.appendChild(newMedia);
+    }
     const appContainer = document.querySelector('.app-container');
     if (appContainer) appContainer.insertAdjacentElement('beforebegin', newContainer);
     else document.body.appendChild(newContainer);
@@ -195,7 +199,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     this.lastType = newType;
   }
   
-  private async ensureWallpaperFolderExists(): Promise<boolean> {
+  private  async ensureWallpaperFolderExists(): Promise<boolean> {
     try {
       const dir = this.manifest.dir;
       if (!dir) throw new Error("manifest.dir is undefined");
@@ -246,7 +250,7 @@ export default class LiveWallpaperPlugin extends Plugin {
       height,
     });
   }
-  private createMediaElement(): HTMLImageElement | HTMLVideoElement {
+  async createMediaElement(): Promise<HTMLImageElement | HTMLVideoElement | null> {
       const isVideo = this.settings.wallpaperType === 'video';
       const media = isVideo
         ? document.createElement('video')
@@ -255,9 +259,15 @@ export default class LiveWallpaperPlugin extends Plugin {
       if (media instanceof HTMLImageElement) {
           media.loading = "lazy"; 
       }
-      media.src = this.app.vault.adapter.getResourcePath(
-          `${this.app.vault.configDir}/${this.settings.wallpaperPath}`
-        );
+      const path = `${this.app.vault.configDir}/${this.settings.wallpaperPath}`;
+      const exists = await this.app.vault.adapter.exists(path);
+
+      if (exists) {
+        media.src = this.app.vault.adapter.getResourcePath(path);
+      } else {
+        this.settings.wallpaperPath = '';
+        return null;
+      }
       Object.assign(media.style, {
           width: '100%', 
           height: '100%', 
@@ -270,7 +280,6 @@ export default class LiveWallpaperPlugin extends Plugin {
           (media as HTMLVideoElement).muted = true;
           (media as HTMLVideoElement).playbackRate = this.settings.playbackSpeed;
       }
-      
       return media;
   }
 

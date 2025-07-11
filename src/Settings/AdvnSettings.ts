@@ -43,8 +43,8 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
           : "Show advanced options"
       );
       this.plugin.toggleModalStyles();
-      this.plugin.settings.opacity = 0;
-      this.plugin.settings.zIndex = 0;
+      this.plugin.settings.opacity = 40;
+      this.plugin.settings.zIndex = 5;
       this.plugin.applyWallpaper(anyOptionEnabled);
       this.plugin.saveSettings();
       this.display();

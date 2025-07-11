@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Platform } from "obsidian";
+import { App, PluginSettingTab, Setting, Platform,Notice} from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
 
 export class SettingsApp extends PluginSettingTab {
@@ -44,7 +44,28 @@ export class SettingsApp extends PluginSettingTab {
             })
         );
       }
+      setting.addButton((btn) => {
+        btn.setButtonText("Check Wallpaper")
+          .setIcon("image-file")
+          .onClick(async () => {
+            const path = `${this.plugin.app.vault.configDir}/${this.plugin.settings.wallpaperPath}`;
 
+            if (!this.plugin.settings.wallpaperPath) {
+              new Notice("No wallpaper path set.");
+              return;
+            }
+
+            const exists = await this.plugin.app.vault.adapter.exists(path);
+
+            if (exists) {
+              new Notice("Wallpaper loaded successfully.");
+            } else {
+              new Notice("Wallpaper file not found. Resetting path.");
+              this.plugin.settings.wallpaperPath = '';
+              await this.plugin.saveSettings();
+            }
+          });
+      });
       setting.addButton((btn) =>
         btn
           .setButtonText("Browse")

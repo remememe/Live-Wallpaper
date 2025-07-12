@@ -5,7 +5,6 @@
 ## Features
 - **Supports videos (MP4, WebM), GIFs, and images** — use your own files or choose from built-in templates
 - **Wallpaper history** — easily switch back to previously used wallpapers  
-  > **Note:** This feature is still experimental and may have bugs.
 - **Customizable effects:**
   - Opacity (0–80%)
   - Blur (0–20px)

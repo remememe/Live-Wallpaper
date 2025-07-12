@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Platform,Notice} from "obsidian";
+import { App, PluginSettingTab, Setting, Platform, Notice } from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
 
 export class SettingsApp extends PluginSettingTab {
@@ -14,58 +14,61 @@ export class SettingsApp extends PluginSettingTab {
     const anyOptionEnabled = Object.values(
       this.plugin.settings.scheduledWallpapers.options
     ).some((v) => v === true);
+    const setting = new Setting(containerEl)
+      .setName("Wallpaper source")
+      .setDesc("Select an image, GIF, or video file to use as your wallpaper");
+
     if (!anyOptionEnabled) {
-      const setting = new Setting(containerEl)
-        .setName("Wallpaper source")
-        .setDesc(
-          "Select an image, GIF, or video file to use as your wallpaper"
-        );
-      if (this.plugin.settings.INBUILD) {
-        setting.addButton((btn) =>
-          btn
-            .setButtonText("History")
-            .setIcon("history")
-            .setClass("mod-cta")
-            .onClick(() => {
-              containerEl.empty();
-              this.plugin.settings.HistoryPaths.forEach((entry) => {
-                new Setting(containerEl)
-                  .setName(entry.fileName)
-                  .setDesc(entry.path)
-                  .addButton((button) => {
-                    button.setButtonText("Select").onClick(() => {
-                      this.plugin.settings.wallpaperPath = entry.path;
-                      this.plugin.settings.wallpaperType = entry.type;
-                      this.plugin.applyWallpaper(false);
-                      this.display();
-                    });
-                  });
-              });
-            })
-        );
-      }
-      setting.addButton((btn) => {
-        btn.setButtonText("Check Wallpaper")
-          .setIcon("image-file")
+      setting.addButton((btn) =>
+        btn
+          .setButtonText("History")
+          .setIcon("history")
+          .setClass("mod-cta")
           .onClick(async () => {
-            const path = `${this.plugin.app.vault.configDir}/${this.plugin.settings.wallpaperPath}`;
+            containerEl.empty();
+            await this.plugin.cleanInvalidWallpaperHistory();
+            this.plugin.settings.HistoryPaths.forEach((entry) => {
+              new Setting(containerEl)
+                .setName(entry.fileName)
+                .setDesc(entry.path)
+                .addButton((button) => {
+                  button.setButtonText("Select").onClick(() => {
+                    this.plugin.settings.wallpaperPath = entry.path;
+                    this.plugin.settings.wallpaperType = entry.type;
+                    this.plugin.applyWallpaper(false);
+                    this.display();
+                  });
+                });
+            });
+          })
+      );
+    }
 
-            if (!this.plugin.settings.wallpaperPath) {
-              new Notice("No wallpaper path set.");
-              return;
-            }
+    setting.addButton((btn) => {
+      btn
+        .setButtonText("Check Wallpaper")
+        .setIcon("image-file")
+        .onClick(async () => {
+          const path = `${this.plugin.app.vault.configDir}/${this.plugin.settings.wallpaperPath}`;
 
-            const exists = await this.plugin.app.vault.adapter.exists(path);
+          if (!this.plugin.settings.wallpaperPath) {
+            new Notice("No wallpaper path set.");
+            return;
+          }
 
-            if (exists) {
-              new Notice("Wallpaper loaded successfully.");
-            } else {
-              new Notice("Wallpaper file not found. Resetting path.");
-              this.plugin.settings.wallpaperPath = '';
-              await this.plugin.saveSettings();
-            }
-          });
-      });
+          const exists = await this.plugin.app.vault.adapter.exists(path);
+
+          if (exists) {
+            new Notice("Wallpaper loaded successfully.");
+          } else {
+            new Notice("Wallpaper file not found. Resetting path.");
+            this.plugin.settings.wallpaperPath = "";
+            await this.plugin.saveSettings();
+          }
+        });
+    });
+
+    if (!anyOptionEnabled) {
       setting.addButton((btn) =>
         btn
           .setButtonText("Browse")
@@ -280,18 +283,6 @@ export class SettingsApp extends PluginSettingTab {
           this.plugin.applyWallpaper(anyOptionEnabled);
           this.display();
         })
-      );
-    new Setting(containerEl)
-      .setName("Under construction")
-      .setDesc("Feature under construction")
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.INBUILD)
-          .onChange(async (value) => {
-            this.plugin.settings.INBUILD = value;
-            await this.plugin.saveSettings();
-            this.display();
-          })
       );
   }
 }

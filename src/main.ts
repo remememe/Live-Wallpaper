@@ -541,7 +541,7 @@ export default class LiveWallpaperPlugin extends Plugin {
       const Main = document.getElementById('live-wallpaper-container');
       Main?.parentElement?.style.removeProperty('background-color');
   }
-  startDayNightWatcher() {
+  private startDayNightWatcher() {
     this.stopDayNightWatcher(); 
 
     this._dayNightInterval = window.setInterval(() => {
@@ -555,10 +555,25 @@ export default class LiveWallpaperPlugin extends Plugin {
     }, 10 * 60 * 1000);
   }
 
-  stopDayNightWatcher() {
+  private stopDayNightWatcher() {
     if (this._dayNightInterval) {
       clearInterval(this._dayNightInterval);
       this._dayNightInterval = -1;
     }
+  }
+  public async cleanInvalidWallpaperHistory() {
+    const validPaths = [];
+
+    for (const entry of this.settings.HistoryPaths) {
+      const fullPath = `${this.app.vault.configDir}/${entry.path}`;
+      const exists = await this.app.vault.adapter.exists(fullPath);
+
+      if (exists) {
+        validPaths.push(entry);
+      }
+    }
+
+    this.settings.HistoryPaths = validPaths;
+    await this.saveSettings(); 
   }
 }

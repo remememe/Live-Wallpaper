@@ -5,6 +5,8 @@ export interface ScheduledWallpapersOptions {
   dayNightMode: boolean;
   weekly: boolean;
   shuffle: boolean;
+  dayStartTime: string;   
+  nightStartTime: string; 
 }
 
 export interface ScheduledWallpapers {
@@ -62,6 +64,8 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
       dayNightMode: false,
       weekly: false,
       shuffle: false,
+      dayStartTime: "08:00",
+      nightStartTime: "20:00"
     },
     wallpaperTypes: [],
   }
@@ -282,9 +286,7 @@ export default class LiveWallpaperPlugin extends Plugin {
       }
       return media;
   }
-
-
-  async openFilePicker(slotIndex?: number) {
+    async openFilePicker(slotIndex?: number) {
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
       fileInput.accept = '.jpg,.jpeg,.png,.gif,.mp4,.webm';

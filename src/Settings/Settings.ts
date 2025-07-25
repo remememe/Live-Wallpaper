@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting, Platform, Notice } from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
+import Scheduler from '../Scheduler';
 
 export class SettingsApp extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
@@ -49,9 +50,28 @@ export class SettingsApp extends PluginSettingTab {
         .setButtonText("Check Wallpaper")
         .setIcon("image-file")
         .onClick(async () => {
-          const path = `${this.plugin.app.vault.configDir}/${this.plugin.settings.wallpaperPath}`;
+          let path = "";
+          if (!anyOptionEnabled) {
+            path = `${this.plugin.app.vault.configDir}/${this.plugin.settings.wallpaperPath}`;
+          } else {
+            const index = Scheduler.applyScheduledWallpaper(
+              this.plugin.settings.scheduledWallpapers.wallpaperPaths,
+              this.plugin.settings.scheduledWallpapers.options
+            );
 
-          if (!this.plugin.settings.wallpaperPath) {
+            if (index !== null) {
+              const selectedPath = this.plugin.settings.scheduledWallpapers.wallpaperPaths[index];
+              path = `${this.plugin.app.vault.configDir}/${selectedPath}`;
+              this.plugin.settings.wallpaperPath = selectedPath; 
+              await this.plugin.saveSettings(); 
+            } else {
+              new Notice("No wallpaper path set.");
+              this.plugin.settings.wallpaperPath = "";
+              await this.plugin.saveSettings();
+              return;
+            }
+          }
+          if (!path) {
             new Notice("No wallpaper path set.");
             return;
           }

@@ -1,6 +1,6 @@
-import { App,PluginSettingTab,Setting } from "obsidian";
+import { App,PluginSettingTab,Setting,Notice} from "obsidian";
 import LiveWallpaperPlugin from "../main";
-
+import Scheduler from "../Scheduler";
 export class ScheduledApp extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
 
@@ -52,6 +52,51 @@ export class ScheduledApp extends PluginSettingTab {
             .setIcon("folder-open")
             .setTooltip("Browse for file")
             .onClick(() => this.plugin.openFilePicker(1))
+        );
+      let dayTimeValue = this.plugin.settings.scheduledWallpapers.options.dayStartTime;
+      let nightTimeValue = this.plugin.settings.scheduledWallpapers.options.nightStartTime;
+
+      const Time = new Setting(containerEl)
+        .setName("Time")
+        .setDesc("Enter time in HH:MM format (e.g., 23:54)");
+
+      Time.addText((area) => {
+        area
+          .setPlaceholder("HH:MM")
+          .setValue(this.plugin.settings.scheduledWallpapers.options.dayStartTime ?? "")
+          .onChange((value) => {
+            dayTimeValue = value;
+          });
+      });
+
+      Time.addText((area) => {
+        area
+          .setPlaceholder("HH:MM")
+          .setValue(this.plugin.settings.scheduledWallpapers.options.nightStartTime ?? "")
+          .onChange((value) => {
+            nightTimeValue = value;
+          });
+      });
+
+      new Setting(containerEl)
+        .addButton((btn) =>
+          btn
+            .setButtonText("Apply now")
+            .setCta()
+            .onClick(async () => {
+              if (
+                Scheduler.ValidateText(dayTimeValue) &&
+                Scheduler.ValidateText(nightTimeValue)
+              ) {
+                this.plugin.settings.scheduledWallpapers.options.dayStartTime = dayTimeValue;
+                this.plugin.settings.scheduledWallpapers.options.nightStartTime = nightTimeValue;
+                await this.plugin.saveSettings();
+                new Notice("Wallpaper schedule has been set.");
+                this.plugin.applyWallpaper(true);
+              } else {
+                new Notice("One or both time values are invalid. Use HH:MM format.");
+              }
+            })
         );
     }
   }

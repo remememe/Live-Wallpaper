@@ -10,7 +10,6 @@ export default class Scheduler {
     if (!Wallpapers || Wallpapers.length === 0 || !options) {
       return null;
     }
-
     if (options.dayNightMode && options.dayStartTime && options.nightStartTime) {
       const [dayHour, dayMinute] = options.dayStartTime.split(":").map(Number);
       const [nightHour, nightMinute] = options.nightStartTime.split(":").map(Number);
@@ -26,7 +25,8 @@ export default class Scheduler {
     }
 
     if (options.weekly) {
-      const day = now.getDay();
+      let day = now.getDay();            
+      day = (day + 6) % 7;               
       if (Wallpapers[day]) return day;
     }
 
@@ -40,5 +40,10 @@ export default class Scheduler {
   static ValidateText(text: string): boolean {
     const timePattern = /^(?:[01]?\d|2[0-3])(?::[0-5]\d){1,2}$/;
     return timePattern.test(text);
+  }
+  static Check(options: ScheduledWallpapersOptions, exceptKey?: keyof ScheduledWallpapersOptions): boolean {
+    return Object.entries(options).some(
+      ([key, value]) => key !== exceptKey && value === true
+    );
   }
 }

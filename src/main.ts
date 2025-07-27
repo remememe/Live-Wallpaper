@@ -178,7 +178,10 @@ export default class LiveWallpaperPlugin extends Plugin {
       if (newPath !== this.lastPath || newType !== this.lastType) {
         const newMedia = await this.createMediaElement();
         if (newMedia) {
-          container.replaceChild(newMedia, media);
+          if (media && media.parentElement) {
+            media.remove();
+          }
+          container.appendChild(newMedia);
           media = newMedia;
           this.lastPath = newPath;
           this.lastType = newType;
@@ -277,7 +280,6 @@ export default class LiveWallpaperPlugin extends Plugin {
           height: '100%', 
           objectFit: 'cover'
       });
-
       if (isVideo) {
           (media as HTMLVideoElement).autoplay = true;
           (media as HTMLVideoElement).loop = true;
@@ -289,7 +291,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     async openFilePicker(slotIndex?: number) {
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
-      fileInput.accept = '.jpg,.jpeg,.png,.gif,.mp4,.webm';
+      fileInput.accept = '.jpg,.jpeg,.png,.gif,.mp4,.webm,.avif';
       fileInput.multiple = false;
 
       fileInput.addEventListener('change', async (event) => {
@@ -297,7 +299,7 @@ export default class LiveWallpaperPlugin extends Plugin {
           if (!target.files || target.files.length === 0) return;
 
           const file = target.files[0];
-          const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'webm'];
+          const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'webm','avif'];
           const extension = file.name.split('.').pop()?.toLowerCase();
 
           if (!extension || !allowedExtensions.includes(extension)) {

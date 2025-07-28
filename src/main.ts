@@ -133,7 +133,6 @@ export default class LiveWallpaperPlugin extends Plugin {
       await this.saveData(this.settings);
   }
   async applyWallpaper(anyOptionEnabled: boolean) {
-
     let newPath: string | null = null;
     let newType: 'image' | 'video' | 'gif' = this.settings.wallpaperType;
     if (anyOptionEnabled) {

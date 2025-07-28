@@ -113,10 +113,8 @@ export class SettingsApp extends PluginSettingTab {
           : this.plugin.settings.opacity;
 
         if (this.plugin.settings.AdnvOpend) {
-          this.plugin.settings.opacity = 100;
+          slider.setDisabled(true);
           valueEl.textContent = ` 100%`;
-          this.plugin.saveSettings();
-          this.plugin.applyWallpaper(anyOptionEnabled);
         }
 
         slider
@@ -188,8 +186,6 @@ export class SettingsApp extends PluginSettingTab {
         if (this.plugin.settings.AdnvOpend) {
           this.plugin.settings.zIndex = 0;
           valueEl.textContent = ` 0`;
-          this.plugin.saveSettings();
-          this.plugin.applyWallpaper(anyOptionEnabled);
         }
         slider
           .setInstant(true)
@@ -205,6 +201,13 @@ export class SettingsApp extends PluginSettingTab {
             }
           });
       });
+    if (this.plugin.settings.AdnvOpend) {
+      this.plugin.settings.opacity = 100;
+      this.plugin.settings.zIndex = 0;
+      this.plugin.saveSettings().then(() => {
+        this.plugin.applyWallpaper(anyOptionEnabled);
+      });
+    }
     new Setting(containerEl)
       .setName("Change playback speed")
       .setDesc(

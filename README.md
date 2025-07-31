@@ -12,12 +12,18 @@
   - Adjustable playback speed *(videos only)*
 - **Low CPU usage** — optimized for smooth performance
 
+> **Important:** In this version, the old `wallpaper` folder has been replaced with a new `wallpapers` folder.  
+> Any unused files in the old folder **may have been automatically removed** during the migration process.
+
 ## Scheduled Themes
-> **Note:** This section is under construction!
 
 - **Day/Night Mode**  
-  Automatically switch between two wallpapers based on local time (default: 7 AM / 7 PM).  
-  *(Time configuration will be available soon.)*
+  Automatically switch between two wallpapers based on local time (default: 8 AM / 8 PM).  
+  You can configure the exact time ranges in the plugin settings.
+
+- **Weekly Mode**  
+  Assign a different wallpaper for each day of the week.  
+  Wallpapers are automatically changed based on the current weekday.
 
 ## Experimental options
 *Deep customization for advanced users (basic CSS knowledge recommended).*

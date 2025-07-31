@@ -40,7 +40,7 @@ export class ScheduledApp extends PluginSettingTab {
 			);
 
 		if (this.plugin.settings.scheduledWallpapers.options.dayNightMode) {
-			const paths = this.plugin.settings.scheduledWallpapers.wallpaperPaths;
+			const paths = this.plugin.settings.scheduledWallpapers.wallpaperDayPaths;
 			if (!paths[0]) paths[0] = "";
 			if (!paths[1]) paths[1] = "";
 
@@ -144,11 +144,7 @@ export class ScheduledApp extends PluginSettingTab {
 			);
 
 		if (this.plugin.settings.scheduledWallpapers.options.weekly) {
-			const paths = this.plugin.settings.scheduledWallpapers.wallpaperPaths;
-			paths.forEach((path, i) => {
-				if (!path) paths[i] = "";
-			});
-
+			const paths = this.plugin.settings.scheduledWallpapers.wallpaperWeekPaths;
 			let selectedDay = "Monday";
 			const daysOfWeek = [
 				"Monday",
@@ -159,6 +155,11 @@ export class ScheduledApp extends PluginSettingTab {
 				"Saturday",
 				"Sunday",
 			];
+			daysOfWeek.forEach((_, index) => {
+			if (!paths[index]) {
+				paths[index] = "";
+			}
+			});
 			new Setting(containerEl)
 				.setName("Day Wallpaper")
 				.setDesc("Wallpaper to use during the day")

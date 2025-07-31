@@ -33,9 +33,27 @@ export class SettingsApp extends PluginSettingTab {
                 .setName(entry.fileName)
                 .setDesc(entry.path)
                 .addButton((button) => {
-                  button.setButtonText("Select").onClick(() => {
-                    this.plugin.settings.wallpaperPath = entry.path;
+                  button.setButtonText("Select").onClick(async () => {
+                    const pluginId = this.plugin.manifest.id;
+                    const baseDir = `${this.app.vault.configDir}/plugins/${pluginId}/wallpapers`;
+                    const sourceFullPath = `${this.app.vault.configDir}/${entry.path}`;
+                    const targetFullPath = `${baseDir}/active/normal/${entry.fileName}`;
+
+                    const exists = await this.app.vault.adapter.exists(targetFullPath);
+                    if (!exists) {
+                      try {
+                        await this.app.vault.adapter.copy(sourceFullPath, targetFullPath);
+                      } catch (e) {
+                        console.error("Failed to copy wallpaper from history to active/normal", e);
+                        return;
+                      }
+                    }
+                    const relativeTargetFullPath = targetFullPath.replace(`${this.app.vault.configDir}/`, '');
+                    const folder = relativeTargetFullPath.substring(0, relativeTargetFullPath.lastIndexOf('/'));
+                    await this.plugin.removeAllExcept(folder, relativeTargetFullPath);
+                    this.plugin.settings.wallpaperPath = `plugins/${pluginId}/wallpapers/active/normal/${entry.fileName}`;
                     this.plugin.settings.wallpaperType = entry.type;
+
                     this.plugin.applyWallpaper(false);
                     this.display();
                   });
@@ -54,13 +72,15 @@ export class SettingsApp extends PluginSettingTab {
           if (!anyOptionEnabled) {
             path = `${this.plugin.app.vault.configDir}/${this.plugin.settings.wallpaperPath}`;
           } else {
-            const index = Scheduler.applyScheduledWallpaper(
-              this.plugin.settings.scheduledWallpapers.wallpaperPaths,
-              this.plugin.settings.scheduledWallpapers.options
-            );
+            const isWeek = this.plugin.settings.scheduledWallpapers.options.weekly;
+            const paths = isWeek
+              ? this.plugin.settings.scheduledWallpapers.wallpaperWeekPaths
+              : this.plugin.settings.scheduledWallpapers.wallpaperDayPaths;
 
+            const index = Scheduler.applyScheduledWallpaper(paths, this.plugin.settings.scheduledWallpapers.options);
+            
             if (index !== null) {
-              const selectedPath = this.plugin.settings.scheduledWallpapers.wallpaperPaths[index];
+              const selectedPath = paths[index];
               path = `${this.plugin.app.vault.configDir}/${selectedPath}`;
               this.plugin.settings.wallpaperPath = selectedPath; 
               await this.plugin.saveSettings(); 

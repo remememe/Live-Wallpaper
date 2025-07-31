@@ -10,8 +10,10 @@ export interface ScheduledWallpapersOptions {
 }
 
 export interface ScheduledWallpapers {
-  wallpaperPaths: string[];
-  wallpaperTypes: ('image' | 'video' | 'gif')[];
+  wallpaperDayPaths: string[];
+  wallpaperWeekPaths: string[];
+  wallpaperDayTypes: ('image' | 'video' | 'gif')[];
+  wallpaperWeekTypes: ('image' | 'video' | 'gif')[];
   options: ScheduledWallpapersOptions;
 }
 interface TextArenaEntry {
@@ -39,8 +41,8 @@ interface LiveWallpaperPluginSettings {
   Color: string;
   INBUILD: boolean;
   scheduledWallpapers: ScheduledWallpapers;
+  migrated?: boolean; 
 }
-
 export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   wallpaperPath: '',
   wallpaperType: 'image',
@@ -59,7 +61,8 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   Color: "#000000",
   INBUILD: false,
   scheduledWallpapers: {
-    wallpaperPaths: [],
+    wallpaperDayPaths: [],
+    wallpaperWeekPaths: [],
     options: {
       dayNightMode: false,
       weekly: false,
@@ -67,7 +70,8 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
       dayStartTime: "08:00",
       nightStartTime: "20:00"
     },
-    wallpaperTypes: [],
+    wallpaperDayTypes: [],
+    wallpaperWeekTypes: []
   }
 };
 export default class LiveWallpaperPlugin extends Plugin {
@@ -78,6 +82,11 @@ export default class LiveWallpaperPlugin extends Plugin {
   async onload() {
       await this.loadSettings();
       await this.ensureWallpaperFolderExists();
+      if (!this.settings.migrated) {
+        await this.migrateOldSettings();
+        this.settings.migrated = true;
+        await this.saveSettings();
+      }
       const anyOptionEnabled = Object.values(this.settings.scheduledWallpapers.options).some(v => v === true);
 
       this.toggleModalStyles();
@@ -132,27 +141,64 @@ export default class LiveWallpaperPlugin extends Plugin {
   async saveSettings() {
       await this.saveData(this.settings);
   }
+  private async migrateOldSettings() {
+    const scheduled = this.settings.scheduledWallpapers;
+
+    if (Array.isArray((scheduled as any).wallpaperPaths)) {
+      const oldPaths = (scheduled as any).wallpaperPaths;
+
+      scheduled.wallpaperDayPaths = [oldPaths[0] ?? "", oldPaths[1] ?? ""];
+      scheduled.wallpaperWeekPaths = oldPaths.slice(2, 9);
+
+      delete (scheduled as any).wallpaperPaths;
+    }
+    
+    if (Array.isArray((scheduled as any).wallpaperTypes)) {
+      const oldTypes = (scheduled as any).wallpaperTypes as ('image' | 'video' | 'gif')[];
+
+      scheduled.wallpaperDayTypes = [
+        this.isValidWallpaperType(oldTypes[0]) ? oldTypes[0] : 'image',
+        this.isValidWallpaperType(oldTypes[1]) ? oldTypes[1] : 'image'
+      ];
+      scheduled.wallpaperWeekTypes = oldTypes.slice(2, 9).map(t => t ?? "image");
+
+      delete (scheduled as any).wallpaperTypes;
+    }
+
+    const pluginDir = `${this.app.vault.configDir}/plugins/${this.manifest.id}`;
+    const oldDir = `${pluginDir}/wallpaper`;
+
+    const exists = await this.app.vault.adapter.exists(oldDir);
+    if (exists) {
+      const oldFolder = `${this.app.vault.configDir}/plugins/${this.manifest.id}/wallpaper`;
+      try {
+        await this.app.vault.adapter.rmdir(oldFolder, true);
+      } catch (err) {
+        console.error("Could not remove old wallpaper folder:", err);
+      }
+    }
+  }
+  private isValidWallpaperType(t: any): t is 'image' | 'video' | 'gif' {
+    return ['image', 'video', 'gif'].includes(t);
+  }
   async applyWallpaper(anyOptionEnabled: boolean) {
     let newPath: string | null = null;
     let newType: 'image' | 'video' | 'gif' = this.settings.wallpaperType;
     if (anyOptionEnabled) {
-      const index = Scheduler.applyScheduledWallpaper(
-        this.settings.scheduledWallpapers.wallpaperPaths,
-        this.settings.scheduledWallpapers.options
-      );
-
+      const {paths,types} = this.getCurrentWallpaperSet();
+      
+      const index = Scheduler.applyScheduledWallpaper(paths, this.settings.scheduledWallpapers.options);
       if (index !== null) {
-        newPath = this.settings.scheduledWallpapers.wallpaperPaths[index];
-        newType = this.settings.scheduledWallpapers.wallpaperTypes[index]; 
+        newPath = paths[index];
+        newType = types[index];
         this.settings.wallpaperPath = newPath;
         this.settings.wallpaperType = newType;
         this.startDayNightWatcher();
-      } 
-      else {
+      } else {
         this.lastPath = this.lastType = null;
         return;
       }
-    } 
+    }
     else if (!this.settings.wallpaperPath) {
       this.lastPath = this.lastType = null;
       return;
@@ -163,7 +209,6 @@ export default class LiveWallpaperPlugin extends Plugin {
     }
     const container = document.getElementById('live-wallpaper-container') as HTMLDivElement;
     let media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-
     if (container && media) {
       Object.assign(container.style, {
         opacity: `${this.settings.opacity/100}`,
@@ -173,15 +218,35 @@ export default class LiveWallpaperPlugin extends Plugin {
       if (media instanceof HTMLVideoElement) {
         media.playbackRate = this.settings.playbackSpeed;
       }
-  
       if (newPath !== this.lastPath || newType !== this.lastType) {
         const newMedia = await this.createMediaElement();
         if (newMedia) {
-          if (media && media.parentElement) {
-            media.remove();
-          }
+          newMedia.style.opacity = '0';
+          newMedia.style.transition = 'opacity 1s ease-in-out';
           container.appendChild(newMedia);
+
+          requestAnimationFrame(() => {
+            newMedia.style.opacity = '1';
+          });
+
+          const medias = container.querySelectorAll('[id^="live-wallpaper-media"]');
+
+          medias.forEach((el, i) => {
+            if (i < medias.length - 1) {
+              const htmlEl = el as HTMLElement; 
+
+              htmlEl.style.transition = 'opacity 1s ease-in-out';
+              htmlEl.style.opacity = '0';
+
+              setTimeout(() => {
+                if (htmlEl.parentElement) {
+                  htmlEl.remove();
+                }
+              }, 1000);
+            }
+          });
           media = newMedia;
+
           this.lastPath = newPath;
           this.lastType = newType;
         }
@@ -189,7 +254,6 @@ export default class LiveWallpaperPlugin extends Plugin {
       await this.saveSettings();
       return;
     }
-  
     this.removeExistingWallpaperElements();
     const newContainer = this.createWallpaperContainer();
     const newMedia = await this.createMediaElement();
@@ -267,7 +331,6 @@ export default class LiveWallpaperPlugin extends Plugin {
       }
       const path = `${this.app.vault.configDir}/${this.settings.wallpaperPath}`;
       const exists = await this.app.vault.adapter.exists(path);
-
       if (exists) {
         media.src = this.app.vault.adapter.getResourcePath(path);
       } else {
@@ -277,7 +340,8 @@ export default class LiveWallpaperPlugin extends Plugin {
       Object.assign(media.style, {
           width: '100%', 
           height: '100%', 
-          objectFit: 'cover'
+          objectFit: 'cover',
+          position: 'absolute'
       });
       if (isVideo) {
           (media as HTMLVideoElement).autoplay = true;
@@ -312,50 +376,31 @@ export default class LiveWallpaperPlugin extends Plugin {
           }
 
           try {
-              const pluginWallpaperDir = `${this.app.vault.configDir}/plugins/${this.manifest.id}/wallpaper`;
-              await this.app.vault.adapter.mkdir(pluginWallpaperDir);
-              const wallpaperPath = `${pluginWallpaperDir}/${file.name}`;
-
-              let arrayBuffer: ArrayBuffer;
-              if (file.type.startsWith('image/')) {
-                  const resizedBlob = await this.resizeImageToBlob(file); 
-                  arrayBuffer = await resizedBlob.arrayBuffer();
-              } else {
-                  arrayBuffer = await file.arrayBuffer();
-              }
-              await this.app.vault.adapter.writeBinary(wallpaperPath, arrayBuffer);
-              const wallpaperPathRelativeForObsidian = `plugins/${this.manifest.id}/wallpaper/${file.name}`;
-              const historyEntry: HistoryEntry = {
-                path: wallpaperPathRelativeForObsidian,
-                type: this.getWallpaperType(file.name),
-                fileName: file.name,
-              };
-              this.settings.HistoryPaths = this.settings.HistoryPaths.filter(entry => entry.path !== historyEntry.path);
-              this.settings.HistoryPaths.unshift(historyEntry);
-              if (this.settings.HistoryPaths.length > 5) {
-                const toRemove = this.settings.HistoryPaths.slice(5);
-                this.settings.HistoryPaths = this.settings.HistoryPaths.slice(0, 5);
-
-                for (const entry of toRemove) {
-                  const fileName = entry.fileName;
-                  const fullPath = `${this.manifest.dir}/wallpaper/${fileName}`;
-                  await this.app.vault.adapter.remove(fullPath).catch(() => {});
-                }
-              }
+              const baseDir = `${this.app.vault.configDir}/plugins/${this.manifest.id}/wallpapers`;
               const anyOptionEnabled = Object.values(this.settings.scheduledWallpapers.options).some(v => v === true);
+
+              const arrayBuffer = await this.getFileArrayBuffer(file);
+              const targetSubfolder = this.computeActiveSubfolder(anyOptionEnabled, slotIndex);
+              const fileName = file.name;
+
+              const activeRelPath = await this.saveUnder(baseDir, `active/${targetSubfolder}`, fileName, arrayBuffer);
+
+              const historyRelPath = await this.saveUnder(baseDir, `history`, fileName, arrayBuffer);
+              
+              this.prependHistory({ path: historyRelPath, type: this.getWallpaperType(fileName), fileName });
+
+              await this.trimHistory(5);
+
               if (anyOptionEnabled && typeof slotIndex === 'number') {
-                  const paths = this.settings.scheduledWallpapers.wallpaperPaths;
-                  while (paths.length < 2) paths.push('');
-
-                  const types = this.settings.scheduledWallpapers.wallpaperTypes;
-                  while (types.length < 2) types.push('image');
-
-                  paths[slotIndex] = wallpaperPathRelativeForObsidian;
-                  types[slotIndex] = this.getWallpaperType(file.name);
-              }
-              else{
-                this.settings.wallpaperPath = wallpaperPathRelativeForObsidian;
-                this.settings.wallpaperType = this.getWallpaperType(file.name);
+                const { paths, types } = this.getCurrentWallpaperSet();
+                await this.removeFileIfUnused(activeRelPath, paths[slotIndex], paths);
+                paths[slotIndex] = activeRelPath;
+                types[slotIndex] = this.getWallpaperType(fileName);
+              } else {
+                const folder = activeRelPath.substring(0, activeRelPath.lastIndexOf('/'));
+                await this.removeAllExcept(folder, activeRelPath);
+                this.settings.wallpaperPath = activeRelPath;
+                this.settings.wallpaperType = this.getWallpaperType(fileName);
               }
               this.applyWallpaper(anyOptionEnabled);
           } catch (error) {
@@ -371,6 +416,82 @@ export default class LiveWallpaperPlugin extends Plugin {
       if (['mp4', 'webm'].includes(extension || '')) return 'video';
       if (extension === 'gif') return 'gif';
       return 'image';
+  }
+  private async getFileArrayBuffer(file: File): Promise<ArrayBuffer> {
+    if (file.type.startsWith('image/')) {
+      const blob = await this.resizeImageToBlob(file);
+      return blob.arrayBuffer();
+    }
+    return file.arrayBuffer();
+  }
+
+  private computeActiveSubfolder(anyOption: boolean, slotIndex?: number): string {
+    if (anyOption && typeof slotIndex === 'number') {
+      return this.isWeeklySchedulerEnabled() ? 'weekly' : 'daily';
+    }
+    return 'normal';
+  }
+  public async saveUnder(baseDir: string, subfolder: string, fileName: string, arrayBuffer: ArrayBuffer): Promise<string> {
+    const dir = `${baseDir}/${subfolder}`;
+    await this.app.vault.adapter.mkdir(dir);
+    const fullPath = `${dir}/${fileName}`;
+    await this.app.vault.adapter.writeBinary(fullPath, arrayBuffer);
+    return `plugins/${this.manifest.id}/wallpapers/${subfolder}/${fileName}`;
+  }
+  private prependHistory(entry: HistoryEntry) {
+    this.settings.HistoryPaths = [
+      entry,
+      ...this.settings.HistoryPaths.filter(e => e.path !== entry.path)
+    ];
+  }
+
+  private async trimHistory(max: number) {
+    const over = this.settings.HistoryPaths.length - max;
+    if (over > 0) {
+      const toRemove = this.settings.HistoryPaths.slice(max);
+      this.settings.HistoryPaths = this.settings.HistoryPaths.slice(0, max);
+      for (const e of toRemove) {
+        const full = `${this.app.vault.configDir}/${e.path}`;
+        await this.app.vault.adapter.remove(full).catch(() => {});
+      }
+    }
+  }
+  private async removeFileIfUnused(newPath: string | undefined, oldPath: string | undefined, allPaths: string[]) {
+    if (!oldPath) return;  
+    if (newPath === oldPath) return; 
+
+    const occurrences = allPaths.filter(path => path === oldPath).length;
+
+    if (occurrences <= 1) {
+      const fullPath = `${this.app.vault.configDir}/${oldPath}`;
+      await this.app.vault.adapter.remove(fullPath).catch(() => {});
+    }
+  }
+  public async removeAllExcept(dirPath: string, keepFilePath: string): Promise<void> {
+    const fullDirPath = `${this.app.vault.configDir}/${dirPath}`;
+    const files = await this.app.vault.adapter.list(fullDirPath).catch(() => null);
+
+    if (!files || !files.files) return;
+
+    for (const file of files.files) {
+      if (file !== `${this.app.vault.configDir}/${keepFilePath}`) {
+        await this.app.vault.adapter.remove(file).catch(() => {});
+      }
+    }
+  }
+  private isWeeklySchedulerEnabled(): boolean {
+    return this.settings.scheduledWallpapers.options.weekly ? true : false;
+  }
+  private getCurrentWallpaperSet() {
+    const isWeek = this.settings.scheduledWallpapers.options.weekly === true;
+    return {
+      paths: isWeek
+        ? this.settings.scheduledWallpapers.wallpaperWeekPaths
+        : this.settings.scheduledWallpapers.wallpaperDayPaths,
+      types: isWeek
+        ? this.settings.scheduledWallpapers.wallpaperWeekTypes
+        : this.settings.scheduledWallpapers.wallpaperDayTypes,
+    };
   }
   private async resizeImageToBlob(file: File): Promise<Blob> 
   {
@@ -545,14 +666,16 @@ export default class LiveWallpaperPlugin extends Plugin {
       Main?.parentElement?.style.removeProperty('background-color');
   }
   private startDayNightWatcher() {
-    this.stopDayNightWatcher(); 
+    this.stopDayNightWatcher();
 
     this._dayNightInterval = window.setInterval(() => {
-      const { wallpaperPaths, options, wallpaperTypes } = this.settings.scheduledWallpapers;
-      const index = Scheduler.applyScheduledWallpaper(wallpaperPaths, options);
-      if (index !== null && wallpaperPaths[index]) {
-        this.settings.wallpaperPath = wallpaperPaths[index];
-        this.settings.wallpaperType = wallpaperTypes[index];
+      const {paths,types} = this.getCurrentWallpaperSet();
+
+      const index = Scheduler.applyScheduledWallpaper(paths, this.settings.scheduledWallpapers.options);
+
+      if (index !== null && paths[index]) {
+        this.settings.wallpaperPath = paths[index];
+        this.settings.wallpaperType = types[index];
         this.applyWallpaper(true);
       }
     }, 10 * 60 * 1000);

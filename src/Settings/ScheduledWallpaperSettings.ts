@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import LiveWallpaperPlugin from "../main";
 import Scheduler from "../Scheduler";
+import { getPathExists } from "./SettingsUtils";
 export class ScheduledApp extends PluginSettingTab {
 	plugin: LiveWallpaperPlugin;
 
@@ -118,6 +119,32 @@ export class ScheduledApp extends PluginSettingTab {
 						}
 					}),
 			);
+			new Setting(containerEl)
+			.setName("Check day and night wallpapers")
+			.setDesc("Check whether the paths to the day and night wallpapers are set and whether the files exist.")
+			.addButton(async (btn) => {
+				btn.setButtonText("Check").onClick(async () => {
+				const dayPath = this.plugin.settings.scheduledWallpapers.wallpaperDayPaths[0];
+				const nightPath = this.plugin.settings.scheduledWallpapers.wallpaperDayPaths[1];
+
+				const dayExists = dayPath
+					? await getPathExists(this.plugin, dayPath)
+					: false;
+				const nightExists = nightPath
+					? await getPathExists(this.plugin, nightPath)
+					: false;
+
+				if (dayExists && nightExists) {
+					new Notice("Both wallpapers (day and night) are set and exist.");
+				} else if (!dayExists && !nightExists) {
+					new Notice("Both wallpapers are missing: day and night.");
+				} else if (!dayExists) {
+					new Notice("The day wallpaper is not set or does not exist.");
+				} else {
+					new Notice("The night wallpaper is not set or does not exist.");
+				}
+				});
+			});
 		}
 		new Setting(containerEl)
 			.setName("Weekly mode")
@@ -185,6 +212,26 @@ export class ScheduledApp extends PluginSettingTab {
 						selectedDay = value;
 					});
 				});
+			new Setting(containerEl)
+			.setName("Check weekly wallpapers")
+			.setDesc("Check if the paths for the weekly wallpapers are set and if the files exist.")
+			.addButton((btn) => {
+				btn.setButtonText("Check").onClick(async () => {
+				const missingDays = [];
+				for (let i = 0; i < paths.length; i++) {
+					const pathExists = await getPathExists(this.plugin, paths[i]);
+					if (!pathExists) {
+					missingDays.push(daysOfWeek[i]);
+					}
+				}
+
+				if (missingDays.length > 0) {
+					new Notice(`Missing wallpapers for: ${missingDays.join(", ")}`);
+				} else {
+					new Notice("All weekly wallpapers are loaded.");
+				}
+				});
+			});
 		}
 	}
 }

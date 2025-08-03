@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, Platform, Notice } from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
-import Scheduler from '../Scheduler';
+import { getPathExists, getWallpaperPath, wallpaperExists } from "./SettingsUtils";
+import { Path } from "three";
 
 export class SettingsApp extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
@@ -20,6 +21,22 @@ export class SettingsApp extends PluginSettingTab {
       .setDesc("Select an image, GIF, or video file to use as your wallpaper");
 
     if (!anyOptionEnabled) {
+      setting.addButton(async (btn) => {
+        const pathExists = await getPathExists(
+          this.plugin,
+          this.plugin.settings.wallpaperPath
+        );
+
+        if (pathExists) {
+          btn
+            .setIcon('circle-check')
+            .setTooltip('Wallpaper path exists');
+        } else {
+          btn
+            .setIcon('circle-x')
+            .setTooltip('Wallpaper path is missing');
+        }
+      });
       setting.addButton((btn) =>
         btn
           .setButtonText("History")
@@ -65,40 +82,17 @@ export class SettingsApp extends PluginSettingTab {
 
     setting.addButton((btn) => {
       btn
-        .setButtonText("Check Wallpaper")
+        .setButtonText("Check wallpaper")
         .setIcon("image-file")
         .onClick(async () => {
-          let path = "";
-          if (!anyOptionEnabled) {
-            path = `${this.plugin.app.vault.configDir}/${this.plugin.settings.wallpaperPath}`;
-          } else {
-            const isWeek = this.plugin.settings.scheduledWallpapers.options.weekly;
-            const paths = isWeek
-              ? this.plugin.settings.scheduledWallpapers.wallpaperWeekPaths
-              : this.plugin.settings.scheduledWallpapers.wallpaperDayPaths;
+          const path = await getWallpaperPath(this.plugin,anyOptionEnabled);
 
-            const index = Scheduler.applyScheduledWallpaper(paths, this.plugin.settings.scheduledWallpapers.options);
-            
-            if (index !== null) {
-              const selectedPath = paths[index];
-              path = `${this.plugin.app.vault.configDir}/${selectedPath}`;
-              this.plugin.settings.wallpaperPath = selectedPath; 
-              await this.plugin.saveSettings(); 
-            } else {
-              new Notice("No wallpaper path set.");
-              this.plugin.settings.wallpaperPath = "";
-              await this.plugin.saveSettings();
-              return;
-            }
-          }
           if (!path) {
             new Notice("No wallpaper path set.");
             return;
           }
 
-          const exists = await this.plugin.app.vault.adapter.exists(path);
-
-          if (exists) {
+          if (await wallpaperExists(this.plugin, path)) {
             new Notice("Wallpaper loaded successfully.");
           } else {
             new Notice("Wallpaper file not found. Resetting path.");
@@ -117,6 +111,17 @@ export class SettingsApp extends PluginSettingTab {
           .onClick(() => this.plugin.openFilePicker())
       );
     }
+    new Setting(containerEl)
+      .setName("Use full-resolution wallpapers")
+      .setDesc("Keeps the original image size. To apply, add the wallpaper again.")
+      .addToggle((Toggle) => {
+        Toggle
+          .setValue(this.plugin.settings.Quality)
+          .onChange(async (value) => {
+            this.plugin.settings.Quality = value;
+            await this.plugin.saveSettings();
+          });
+      });
     new Setting(containerEl)
       .setName("Wallpaper opacity")
       .setDesc(

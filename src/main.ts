@@ -1,6 +1,7 @@
 import { Plugin, PluginSettingTab, Setting, App, ColorComponent,Platform, livePreviewState} from 'obsidian';
 import { LiveWallpaperSettingManager } from './Settings/SettingsManager'
 import Scheduler from './Scheduler';
+import { platform } from 'os';
 export interface ScheduledWallpapersOptions {
   dayNightMode: boolean;
   weekly: boolean;
@@ -29,6 +30,7 @@ interface LiveWallpaperPluginSettings {
   wallpaperPath: string;
   wallpaperType: 'image' | 'video' | 'gif';
   playbackSpeed: number;
+  Quality: boolean;
   opacity: number;
   zIndex: number;
   blurRadius: number;       
@@ -47,6 +49,7 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   wallpaperPath: '',
   wallpaperType: 'image',
   playbackSpeed: 1.0,
+  Quality: false,
   opacity: 40,
   zIndex: 5,
   blurRadius: 8,            
@@ -268,7 +271,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     this.lastPath = newPath;
     this.lastType = newType;
   }
-  
+
   private  async ensureWallpaperFolderExists(): Promise<boolean> {
     try {
       const dir = this.manifest.dir;
@@ -336,13 +339,22 @@ export default class LiveWallpaperPlugin extends Plugin {
       } else {
         this.settings.wallpaperPath = '';
         return null;
-      }
+      } 
       Object.assign(media.style, {
           width: '100%', 
           height: '100%', 
           objectFit: 'cover',
           position: 'absolute'
       });
+      if (this.settings.Quality) {
+        Object.assign(media.style, {
+          imageRendering: 'auto',
+          willChange: 'transform',
+          overflowClipMargin: 'unset',
+          overflow: 'clip'
+        });
+      }
+
       if (isVideo) {
           (media as HTMLVideoElement).autoplay = true;
           (media as HTMLVideoElement).loop = true;
@@ -381,7 +393,15 @@ export default class LiveWallpaperPlugin extends Plugin {
 
               const arrayBuffer = await this.getFileArrayBuffer(file);
               const targetSubfolder = this.computeActiveSubfolder(anyOptionEnabled, slotIndex);
-              const fileName = file.name;
+              let fileName = file.name;
+              if (file.type.startsWith('image/') && this.settings.Quality) {
+                const dotIndex = fileName.lastIndexOf('.');
+                if (dotIndex !== -1) {
+                  fileName = fileName.slice(0, dotIndex) + '_quality' + fileName.slice(dotIndex);
+                } else {
+                  fileName = fileName + '_quality';
+                }
+              }
 
               const activeRelPath = await this.saveUnder(baseDir, `active/${targetSubfolder}`, fileName, arrayBuffer);
 
@@ -419,7 +439,7 @@ export default class LiveWallpaperPlugin extends Plugin {
   }
   private async getFileArrayBuffer(file: File): Promise<ArrayBuffer> {
     if (file.type.startsWith('image/')) {
-      const blob = await this.resizeImageToBlob(file);
+      const blob = await this.resizeImageToBlob(file,this.settings.Quality);
       return blob.arrayBuffer();
     }
     return file.arrayBuffer();
@@ -493,18 +513,36 @@ export default class LiveWallpaperPlugin extends Plugin {
         : this.settings.scheduledWallpapers.wallpaperDayTypes,
     };
   }
-  private async resizeImageToBlob(file: File): Promise<Blob> 
+  private async resizeImageToBlob(file: File, allowFullRes = false): Promise<Blob> 
   {
       const img = await createImageBitmap(file);
-      const MAX_WIDTH = 1920;
-      
-      if (img.width <= MAX_WIDTH) return new Blob([await file.arrayBuffer()], {type: file.type});
 
-      const canvas = new OffscreenCanvas(MAX_WIDTH, (img.height / img.width) * MAX_WIDTH);
+      let MAX_WIDTH = window.innerWidth;
+      if (Platform.isMobile) {
+        const parsed = parseInt(this.settings.mobileBackgroundWidth);
+        if (!isNaN(parsed)) {
+          MAX_WIDTH = parsed;
+        }
+      }
+      if (allowFullRes || img.width <= MAX_WIDTH) {
+          return new Blob([await file.arrayBuffer()], { type: file.type });
+      }
+
+      const newWidth = MAX_WIDTH;
+      const newHeight = (img.height / img.width) * newWidth;
+
+      const canvas = new OffscreenCanvas(newWidth, newHeight);
       const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      
-      return canvas.convertToBlob({quality: 0.8, type: 'image/jpeg'});
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      const bmp = await createImageBitmap(img, {
+        resizeWidth: newWidth,
+        resizeHeight: newHeight,
+        resizeQuality: 'high'
+      });
+      ctx.drawImage(bmp, 0, 0, newWidth, newHeight);
+
+      return canvas.convertToBlob({ quality: 0.8, type: 'image/jpeg' });
   }
 
   public async LoadOrUnloadChanges(load: boolean): Promise<void> {

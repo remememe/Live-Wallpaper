@@ -4,11 +4,12 @@
 
 ## Features
 - **Supports videos (MP4, WebM), GIFs, and images** — use your own files or choose from built-in templates
-- **Wallpaper history** — easily switch back to previously used wallpapers  
+- **Wallpaper history** — easily switch back to previously used wallpapers
+- **Full-resolution wallpapers** — allows you to use images in their original size without downscaling  
 - **Customizable effects:**
   - Opacity (0–80%)
   - Blur (0–20px)
-  - Brightness and contrast
+  - Brightness
   - Adjustable playback speed *(videos only)*
 - **Low CPU usage** — optimized for smooth performance
 
@@ -55,10 +56,17 @@
 
 
 ---
+
 ## Installation  
-1. Download the latest release from Releases 
-2. Copy `main.js` and `manifest.json` to:  
+## From Git
+1. Download the latest release from the Releases page.
+2. Copy the files `main.js`, `manifest.json`, and `styles.css` to the following directory:
    `/plugins/live-wallpaper/`  
+
+---
+
+## From within Obsidian
+You can also install the plugin directly through the Community Plugins section in Obsidian.
 
 ![](https://github.com/remememe/Live-Wallpaper/blob/main/Assets/sc4.png)
 ![](https://github.com/remememe/Live-Wallpaper/blob/main/Assets/sc2.png)
@@ -72,7 +80,20 @@
 
 > **Note:** The plugin now supports mobile devices in addition to desktop platforms.
 
-*Contribution*
-Contributions are welcome! If you'd like to 
-help improve the plugin, feel free to open an issue or 
-submit a pull request on GitHub. Bug fixes, new features, performance improvements!!.
+## Contribution
+
+Contributions are welcome! If you'd like to help improve the plugin whether by fixing bugs, adding new features, or optimizing performance feel free to:
+
+- Open an issue if you find a bug or have a suggestion
+- Submit a pull request on GitHub
+
+### Getting Started with Development
+
+```bash
+git clone https://github.com/remememe/Live-Wallpaper.git
+cd Live-Wallpaper
+npm install
+npm run build
+```
+
+Your contributions are greatly appreciated!!

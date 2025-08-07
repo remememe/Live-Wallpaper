@@ -41,6 +41,8 @@ interface LiveWallpaperPluginSettings {
   AdnvOpend: boolean;
   TextArenas: TextArenaEntry[];
   Color: string;
+  Position: string;
+  useObjectFit: boolean;
   INBUILD: boolean;
   scheduledWallpapers: ScheduledWallpapers;
   migrated?: boolean; 
@@ -62,6 +64,8 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
       { target: "", attribute: "" }
     ],
   Color: "#000000",
+  Position: "Center",
+  useObjectFit: true,
   INBUILD: false,
   scheduledWallpapers: {
     wallpaperDayPaths: [],
@@ -339,22 +343,8 @@ export default class LiveWallpaperPlugin extends Plugin {
       } else {
         this.settings.wallpaperPath = '';
         return null;
-      } 
-      Object.assign(media.style, {
-          width: '100%', 
-          height: '100%', 
-          objectFit: 'cover',
-          position: 'absolute'
-      });
-      if (this.settings.Quality) {
-        Object.assign(media.style, {
-          imageRendering: 'auto',
-          willChange: 'transform',
-          overflowClipMargin: 'unset',
-          overflow: 'clip'
-        });
       }
-
+      this.applyMediaStyles(media);
       if (isVideo) {
           (media as HTMLVideoElement).autoplay = true;
           (media as HTMLVideoElement).loop = true;
@@ -362,6 +352,35 @@ export default class LiveWallpaperPlugin extends Plugin {
           (media as HTMLVideoElement).playbackRate = this.settings.playbackSpeed;
       }
       return media;
+  }
+  public applyMediaStyles(media: HTMLImageElement | HTMLVideoElement) {
+    if(this.settings.INBUILD)
+    {
+      Object.assign(media.style, {
+        width: '100%', 
+        height: '100%', 
+        objectFit: this.settings.useObjectFit ? 'cover' : 'unset',
+        objectPosition: this.settings.Position,
+        position: 'absolute',
+      });
+    }
+    else
+    {
+      Object.assign(media.style, {
+        width: '100%', 
+        height: '100%', 
+        objectFit: 'cover',
+        position: 'absolute'
+      });
+    }
+    if (this.settings.Quality) {
+      Object.assign(media.style, {
+        imageRendering: 'auto',
+        willChange: 'transform',
+        overflowClipMargin: 'unset',
+        overflow: 'clip',
+      });
+    }
   }
     async openFilePicker(slotIndex?: number) {
       const fileInput = document.createElement('input');

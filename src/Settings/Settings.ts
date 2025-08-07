@@ -1,7 +1,11 @@
 import { App, PluginSettingTab, Setting, Platform, Notice } from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
 import { getPathExists, getWallpaperPath, wallpaperExists } from "./SettingsUtils";
-import { Path } from "three";
+const positions = new Map<string, string>([
+  ['right', 'Right'],
+  ['left', 'Left'],
+  ['center', 'Center'],
+]);
 
 export class SettingsApp extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
@@ -122,6 +126,41 @@ export class SettingsApp extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
+    if(this.plugin.settings.INBUILD)
+    {   
+      const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+      new Setting(containerEl)
+        .setName('Image position')
+        .setDesc('Adjust the image alignment when the main focus is off-center.')
+        .addDropdown((dropdown) => {
+          positions.forEach((label, key) => {
+            dropdown.addOption(key, label);
+          });
+          dropdown
+            .setValue(this.plugin.settings.Position)
+            .onChange(async (value) => {
+              this.plugin.settings.Position = value;
+              await this.plugin.saveSettings();
+              if (media) {
+                this.plugin.applyMediaStyles(media);
+              }
+          });
+      });
+      new Setting(containerEl)
+      .setName('Disable image cover')
+      .setDesc('Toggle this option to turn off object-fit: cover for the image.')
+      .addToggle(toggle => {
+        toggle
+          .setValue(this.plugin.settings.useObjectFit)
+          .onChange(async (value) => {
+            this.plugin.settings.useObjectFit = value;
+            await this.plugin.saveSettings();
+            if (media) {
+              this.plugin.applyMediaStyles(media);
+            }
+          });
+      });
+    }
     new Setting(containerEl)
       .setName("Wallpaper opacity")
       .setDesc(
@@ -331,6 +370,20 @@ export class SettingsApp extends PluginSettingTab {
           this.plugin.applyWallpaper(anyOptionEnabled);
           this.display();
         })
+      );
+    new Setting(containerEl)
+      .setName("Under construction")
+      .setDesc("Feature under construction")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.INBUILD)
+          .onChange(async (value) => {
+            const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+            this.plugin.settings.INBUILD = value;
+            await this.plugin.saveSettings();
+            this.display();
+            this.plugin.applyMediaStyles(media);
+          })
       );
   }
 }

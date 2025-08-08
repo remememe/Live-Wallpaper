@@ -42,9 +42,17 @@ export default class Scheduler {
     return timePattern.test(text);
   }
   static Check(options: ScheduledWallpapersOptions, exceptKey?: keyof ScheduledWallpapersOptions): boolean {
-    return Object.entries(options).some(
-      ([key, value]) => key !== exceptKey && value === true
-    );
+    const BOOLEAN_KEYS: (keyof ScheduledWallpapersOptions)[] = [
+      "dayNightMode",
+      "weekly",
+      "shuffle"
+    ];
+
+    return BOOLEAN_KEYS.some((k) => {
+      if (k === exceptKey) return false;
+      const val = options[k];
+      return val === true || val === "true";
+    });
   }
   static getIntervalInMs(options: ScheduledWallpapersOptions): number {
     const timeStr = options.intervalCheckTime ?? "00:10";

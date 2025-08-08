@@ -46,4 +46,9 @@ export default class Scheduler {
       ([key, value]) => key !== exceptKey && value === true
     );
   }
+  static getIntervalInMs(options: ScheduledWallpapersOptions): number {
+    const timeStr = options.intervalCheckTime ?? "00:10";
+    const [hh, mm] = timeStr.split(":").map(Number);
+    return ((hh * 60) + mm) * 60 * 1000;
+  }
 }

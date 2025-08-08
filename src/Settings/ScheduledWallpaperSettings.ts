@@ -120,31 +120,35 @@ export class ScheduledApp extends PluginSettingTab {
 					}),
 			);
 			new Setting(containerEl)
-			.setName("Check day and night wallpapers")
-			.setDesc("Check whether the paths to the day and night wallpapers are set and whether the files exist.")
-			.addButton(async (btn) => {
-				btn.setButtonText("Check").onClick(async () => {
-				const dayPath = this.plugin.settings.scheduledWallpapers.wallpaperDayPaths[0];
-				const nightPath = this.plugin.settings.scheduledWallpapers.wallpaperDayPaths[1];
+				.setName("Check day and night wallpapers")
+				.setDesc(
+					"Check whether the paths to the day and night wallpapers are set and whether the files exist.",
+				)
+				.addButton(async (btn) => {
+					btn.setButtonText("Check").onClick(async () => {
+						const dayPath =
+							this.plugin.settings.scheduledWallpapers.wallpaperDayPaths[0];
+						const nightPath =
+							this.plugin.settings.scheduledWallpapers.wallpaperDayPaths[1];
 
-				const dayExists = dayPath
-					? await getPathExists(this.plugin, dayPath)
-					: false;
-				const nightExists = nightPath
-					? await getPathExists(this.plugin, nightPath)
-					: false;
+						const dayExists = dayPath
+							? await getPathExists(this.plugin, dayPath)
+							: false;
+						const nightExists = nightPath
+							? await getPathExists(this.plugin, nightPath)
+							: false;
 
-				if (dayExists && nightExists) {
-					new Notice("Both wallpapers (day and night) are set and exist.");
-				} else if (!dayExists && !nightExists) {
-					new Notice("Both wallpapers are missing: day and night.");
-				} else if (!dayExists) {
-					new Notice("The day wallpaper is not set or does not exist.");
-				} else {
-					new Notice("The night wallpaper is not set or does not exist.");
-				}
+						if (dayExists && nightExists) {
+							new Notice("Both wallpapers (day and night) are set and exist.");
+						} else if (!dayExists && !nightExists) {
+							new Notice("Both wallpapers are missing: day and night.");
+						} else if (!dayExists) {
+							new Notice("The day wallpaper is not set or does not exist.");
+						} else {
+							new Notice("The night wallpaper is not set or does not exist.");
+						}
+					});
 				});
-			});
 		}
 		new Setting(containerEl)
 			.setName("Weekly mode")
@@ -183,9 +187,9 @@ export class ScheduledApp extends PluginSettingTab {
 				"Sunday",
 			];
 			daysOfWeek.forEach((_, index) => {
-			if (!paths[index]) {
-				paths[index] = "";
-			}
+				if (!paths[index]) {
+					paths[index] = "";
+				}
 			});
 			new Setting(containerEl)
 				.setName("Day Wallpaper")
@@ -213,25 +217,92 @@ export class ScheduledApp extends PluginSettingTab {
 					});
 				});
 			new Setting(containerEl)
-			.setName("Check weekly wallpapers")
-			.setDesc("Check if the paths for the weekly wallpapers are set and if the files exist.")
-			.addButton((btn) => {
-				btn.setButtonText("Check").onClick(async () => {
-				const missingDays = [];
-				for (let i = 0; i < paths.length; i++) {
-					const pathExists = await getPathExists(this.plugin, paths[i]);
-					if (!pathExists) {
-					missingDays.push(daysOfWeek[i]);
-					}
-				}
+				.setName("Check weekly wallpapers")
+				.setDesc(
+					"Check if the paths for the weekly wallpapers are set and if the files exist.",
+				)
+				.addButton((btn) => {
+					btn.setButtonText("Check").onClick(async () => {
+						const missingDays = [];
+						for (let i = 0; i < paths.length; i++) {
+							const pathExists = await getPathExists(this.plugin, paths[i]);
+							if (!pathExists) {
+								missingDays.push(daysOfWeek[i]);
+							}
+						}
 
-				if (missingDays.length > 0) {
-					new Notice(`Missing wallpapers for: ${missingDays.join(", ")}`);
-				} else {
-					new Notice("All weekly wallpapers are loaded.");
-				}
+						if (missingDays.length > 0) {
+							new Notice(`Missing wallpapers for: ${missingDays.join(", ")}`);
+						} else {
+							new Notice("All weekly wallpapers are loaded.");
+						}
+					});
+				});
+		}
+		const WALLPAPER_INTERVALS: Record<string, string> = {
+			"00:01": "Every 1 minute",
+			"00:05": "Every 5 minutes",
+			"00:10": "Every 10 minutes",
+			"00:30": "Every 30 minutes",
+			"01:00": "Every 1 hour",
+			"custom": "Custom interval",
+		};
+
+		const currentInterval = this.plugin.settings.scheduledWallpapers.options.intervalCheckTime ?? "00:10";
+
+		new Setting(containerEl)
+			.setName("Wallpaper Change Interval")
+			.setDesc("How often the wallpaper should be checked and changed")
+			.addDropdown((dropdown) => {
+				dropdown.addOptions(WALLPAPER_INTERVALS);
+				dropdown.setValue(this.plugin.settings.scheduledWallpapers.options.isCustomInterval ? "custom" : currentInterval);
+				dropdown.onChange(async (value) => {
+					if (value !== "custom") {
+						this.plugin.settings.scheduledWallpapers.options.intervalCheckTime = value;
+						this.plugin.settings.scheduledWallpapers.options.isCustomInterval = false;
+						await this.plugin.saveSettings();
+						this.plugin.startDayNightWatcher();
+						this.display(); 
+					} else {
+						this.plugin.settings.scheduledWallpapers.options.intervalCheckTime = "00:42";
+						this.plugin.settings.scheduledWallpapers.options.isCustomInterval = true;
+						await this.plugin.saveSettings();
+						this.display();
+					}
 				});
 			});
+
+		if (this.plugin.settings.scheduledWallpapers.options.isCustomInterval) {
+			let customValue = currentInterval;
+			new Setting(containerEl)
+				.setName("Custom Interval")
+				.setDesc("Enter time in HH:MM format (e.g., 00:42)")
+				.addText((text) => {
+					text
+						.setPlaceholder("HH:MM")
+						.setValue(currentInterval)
+						.onChange((value) => {
+							customValue = value;
+						});
+				});
+
+			new Setting(containerEl)
+				.addButton((btn) =>
+					btn
+						.setButtonText("Apply Custom Interval")
+						.setCta()
+						.onClick(async () => {
+							if (!Scheduler.ValidateText(customValue)) {
+								new Notice("Invalid format. Use HH:MM.");
+								return;
+							}
+
+							this.plugin.settings.scheduledWallpapers.options.intervalCheckTime = customValue;
+							await this.plugin.saveSettings();
+							this.plugin.startDayNightWatcher();
+							new Notice("Custom interval applied.");
+						})
+				);
 		}
 	}
 }

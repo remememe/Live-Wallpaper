@@ -1,13 +1,14 @@
 import { Plugin, PluginSettingTab, Setting, App, ColorComponent,Platform, livePreviewState} from 'obsidian';
 import { LiveWallpaperSettingManager } from './Settings/SettingsManager'
 import Scheduler from './Scheduler';
-import { platform } from 'os';
 export interface ScheduledWallpapersOptions {
   dayNightMode: boolean;
   weekly: boolean;
   shuffle: boolean;
   dayStartTime: string;   
-  nightStartTime: string; 
+  nightStartTime: string;
+  intervalCheckTime: string; 
+  isCustomInterval: boolean;
 }
 
 export interface ScheduledWallpapers {
@@ -75,7 +76,9 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
       weekly: false,
       shuffle: false,
       dayStartTime: "08:00",
-      nightStartTime: "20:00"
+      nightStartTime: "20:00",
+      intervalCheckTime: "00:10",
+      isCustomInterval: false
     },
     wallpaperDayTypes: [],
     wallpaperWeekTypes: []
@@ -722,7 +725,7 @@ export default class LiveWallpaperPlugin extends Plugin {
       const Main = document.getElementById('live-wallpaper-container');
       Main?.parentElement?.style.removeProperty('background-color');
   }
-  private startDayNightWatcher() {
+  public startDayNightWatcher() {
     this.stopDayNightWatcher();
 
     this._dayNightInterval = window.setInterval(() => {
@@ -735,7 +738,7 @@ export default class LiveWallpaperPlugin extends Plugin {
         this.settings.wallpaperType = types[index];
         this.applyWallpaper(true);
       }
-    }, 10 * 60 * 1000);
+    },Scheduler.getIntervalInMs(this.settings.scheduledWallpapers.options));
   }
 
   private stopDayNightWatcher() {

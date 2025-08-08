@@ -97,7 +97,7 @@ export default class LiveWallpaperPlugin extends Plugin {
         this.settings.migrated = true;
         await this.saveSettings();
       }
-      const anyOptionEnabled = Object.values(this.settings.scheduledWallpapers.options).some(v => v === true);
+      const anyOptionEnabled = Scheduler.Check(this.settings.scheduledWallpapers.options);
 
       this.toggleModalStyles();
       this.addSettingTab(new LiveWallpaperSettingManager(this.app, this));
@@ -411,7 +411,7 @@ export default class LiveWallpaperPlugin extends Plugin {
 
           try {
               const baseDir = `${this.app.vault.configDir}/plugins/${this.manifest.id}/wallpapers`;
-              const anyOptionEnabled = Object.values(this.settings.scheduledWallpapers.options).some(v => v === true);
+              const anyOptionEnabled = Scheduler.Check(this.settings.scheduledWallpapers.options);
 
               const arrayBuffer = await this.getFileArrayBuffer(file);
               const targetSubfolder = this.computeActiveSubfolder(anyOptionEnabled, slotIndex);

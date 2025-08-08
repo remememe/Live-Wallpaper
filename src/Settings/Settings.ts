@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, Platform, Notice } from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
 import { getPathExists, getWallpaperPath, wallpaperExists } from "./SettingsUtils";
+import Scheduler from "../Scheduler";
 const positions = new Map<string, string>([
   ['right', 'Right'],
   ['left', 'Left'],
@@ -17,9 +18,7 @@ export class SettingsApp extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    const anyOptionEnabled = Object.values(
-      this.plugin.settings.scheduledWallpapers.options
-    ).some((v) => v === true);
+    const anyOptionEnabled = Scheduler.Check(this.plugin.settings.scheduledWallpapers.options);
     const setting = new Setting(containerEl)
       .setName("Wallpaper source")
       .setDesc("Select an image, GIF, or video file to use as your wallpaper");

@@ -1,5 +1,6 @@
 import { PluginSettingTab, App, Setting } from "obsidian";
 import type LiveWallpaperPlugin from "../main";
+import Scheduler from "../Scheduler";
 
 export class LiveWallpaperSettingTab extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
@@ -12,9 +13,7 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     const advancedSection = containerEl.createDiv();
-    const anyOptionEnabled = Object.values(
-      this.plugin.settings.scheduledWallpapers.options
-    ).some((v) => v === true);
+    const anyOptionEnabled = Scheduler.Check(this.plugin.settings.scheduledWallpapers.options);
     new Setting(advancedSection).setName("Experimental options").setHeading();
 
     new Setting(advancedSection).setName(

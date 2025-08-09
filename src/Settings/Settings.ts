@@ -1,6 +1,6 @@
-import { App, PluginSettingTab, Setting, Platform, Notice } from "obsidian";
+import { App, PluginSettingTab, Setting, Platform, Notice} from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
-import { getPathExists, getWallpaperPath, wallpaperExists } from "./SettingsUtils";
+import { getPathExists, getWallpaperPath, wallpaperExists,applyImagePosition} from "./SettingsUtils";
 import Scheduler from "../Scheduler";
 const positions = new Map<string, string>([
   ['right', 'Right'],
@@ -125,9 +125,57 @@ export class SettingsApp extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
-    if(this.plugin.settings.INBUILD)
-    {   
-      const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+      if (this.plugin.settings.INBUILD) {
+        this.plugin.registerDomEvent(window, 'resize', () => {    
+            if (!this.plugin.settings.INBUILD) return;  
+            const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;  
+            applyImagePosition(  
+                media,  
+                this.plugin.settings.PositionX ?? 50,  
+                this.plugin.settings.PositionY ?? 50  
+            );  
+        });
+        new Setting(containerEl)
+          .setName('Horizontal position')
+          .setDesc('Adjust the horizontal position of the wallpaper.')
+          .addSlider(slider => {
+            slider
+              .setLimits(0, 50, 1) 
+              .setValue(this.plugin.settings.PositionX ?? 50) 
+              .onChange(async (value) => {
+                const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+                this.plugin.settings.PositionX = value;
+                await this.plugin.saveSettings();
+                if (media) {
+                  applyImagePosition(
+                    media,
+                    this.plugin.settings.PositionX,
+                    this.plugin.settings.PositionY ?? 50
+                  );
+                }
+              });
+          });
+
+        new Setting(containerEl)
+          .setName('Vertical position')
+          .setDesc('Adjust the vertical position of the wallpaper.')
+          .addSlider(slider => {
+            slider
+              .setLimits(0, 100, 1)
+              .setValue(this.plugin.settings.PositionY ?? 50)
+              .onChange(async (value) => {
+                const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+                this.plugin.settings.PositionY = value;
+                await this.plugin.saveSettings();
+                if (media) {
+                  applyImagePosition(
+                    media,
+                    this.plugin.settings.PositionX ?? 50,
+                    this.plugin.settings.PositionY
+                  );
+                }
+              });
+          });
       new Setting(containerEl)
         .setName('Image position')
         .setDesc('Adjust the image alignment when the main focus is off-center.')
@@ -138,6 +186,7 @@ export class SettingsApp extends PluginSettingTab {
           dropdown
             .setValue(this.plugin.settings.Position)
             .onChange(async (value) => {
+              const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
               this.plugin.settings.Position = value;
               await this.plugin.saveSettings();
               if (media) {
@@ -152,6 +201,7 @@ export class SettingsApp extends PluginSettingTab {
         toggle
           .setValue(this.plugin.settings.useObjectFit)
           .onChange(async (value) => {
+            const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
             this.plugin.settings.useObjectFit = value;
             await this.plugin.saveSettings();
             if (media) {
@@ -372,7 +422,7 @@ export class SettingsApp extends PluginSettingTab {
       );
     new Setting(containerEl)
       .setName("Under construction")
-      .setDesc("Feature under construction")
+      .setDesc("Feature under construction (may be slightly buggy during testing).")
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.INBUILD)
@@ -382,6 +432,7 @@ export class SettingsApp extends PluginSettingTab {
             await this.plugin.saveSettings();
             this.display();
             this.plugin.applyMediaStyles(media);
+            if(value === true) applyImagePosition(media,this.plugin.settings.PositionX ?? 50,this.plugin.settings.PositionY);
           })
       );
   }

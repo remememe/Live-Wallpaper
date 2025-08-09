@@ -43,6 +43,8 @@ interface LiveWallpaperPluginSettings {
   TextArenas: TextArenaEntry[];
   Color: string;
   Position: string;
+  PositionX: number;
+  PositionY: number;
   useObjectFit: boolean;
   INBUILD: boolean;
   scheduledWallpapers: ScheduledWallpapers;
@@ -66,6 +68,8 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
     ],
   Color: "#000000",
   Position: "Center",
+  PositionX: 50,
+  PositionY: 50,
   useObjectFit: true,
   INBUILD: false,
   scheduledWallpapers: {
@@ -109,7 +113,6 @@ export default class LiveWallpaperPlugin extends Plugin {
       if (appContainer) appContainer.insertAdjacentElement('beforebegin', newContainer);
       else document.body.appendChild(newContainer);
       document.body.classList.add('live-wallpaper-active');
-      
       if(anyOptionEnabled)
       {
         this.startDayNightWatcher();
@@ -357,6 +360,7 @@ export default class LiveWallpaperPlugin extends Plugin {
       return media;
   }
   public applyMediaStyles(media: HTMLImageElement | HTMLVideoElement) {
+    media.removeAttribute("style");
     if(this.settings.INBUILD)
     {
       Object.assign(media.style, {

@@ -50,3 +50,33 @@ export async function wallpaperExists(
 ): Promise<boolean> {
 	return await plugin.app.vault.adapter.exists(path);
 }
+export function applyImagePosition(element: HTMLImageElement | HTMLVideoElement,posXPercent: number,posYPercent: number) {
+  const container = element.parentElement!;
+  const containerWidth = container.clientWidth;
+  const containerHeight = container.clientHeight;
+
+  const naturalWidth = element instanceof HTMLImageElement
+    ? element.naturalWidth
+    : element.videoWidth;
+  const naturalHeight = element instanceof HTMLImageElement
+    ? element.naturalHeight
+    : element.videoHeight;
+
+  const scale = Math.max(containerWidth / naturalWidth, containerHeight / naturalHeight);
+
+  const scaledWidth = naturalWidth * scale;
+  const scaledHeight = naturalHeight * scale;
+
+  const maxOffsetX = (scaledWidth - containerWidth) / 2;
+  const maxOffsetY = (scaledHeight - containerHeight) / 2;
+
+  const offsetX = (posXPercent - 50) / 50 * maxOffsetX;
+  const offsetY = (posYPercent - 50) / 50 * maxOffsetY;
+
+  element.style.width = `${scaledWidth}px`;
+  element.style.height = `${scaledHeight}px`;
+  element.style.objectFit = 'cover';
+  element.style.position = 'absolute';
+  element.style.left = `${containerWidth / 2 - scaledWidth / 2 + offsetX}px`;
+  element.style.top = `${containerHeight / 2 - scaledHeight / 2 + offsetY}px`;
+}

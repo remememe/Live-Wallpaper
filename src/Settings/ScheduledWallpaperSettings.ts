@@ -251,7 +251,7 @@ export class ScheduledApp extends PluginSettingTab {
 		const currentInterval = this.plugin.settings.scheduledWallpapers.options.intervalCheckTime ?? "00:10";
 
 		new Setting(containerEl)
-			.setName("Wallpaper Change Interval")
+			.setName("Wallpaper change interval")
 			.setDesc("How often the wallpaper should be checked and changed")
 			.addDropdown((dropdown) => {
 				dropdown.addOptions(WALLPAPER_INTERVALS);
@@ -275,7 +275,7 @@ export class ScheduledApp extends PluginSettingTab {
 		if (this.plugin.settings.scheduledWallpapers.options.isCustomInterval) {
 			let customValue = currentInterval;
 			new Setting(containerEl)
-				.setName("Custom Interval")
+				.setName("Custom interval")
 				.setDesc("Enter time in HH:MM format (e.g., 00:42)")
 				.addText((text) => {
 					text
@@ -289,7 +289,7 @@ export class ScheduledApp extends PluginSettingTab {
 			new Setting(containerEl)
 				.addButton((btn) =>
 					btn
-						.setButtonText("Apply Custom Interval")
+						.setButtonText("Apply custom interval")
 						.setCta()
 						.onClick(async () => {
 							if (!Scheduler.ValidateText(customValue)) {

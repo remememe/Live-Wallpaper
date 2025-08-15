@@ -1,11 +1,11 @@
 import { App, PluginSettingTab, Setting, Platform, Notice} from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
-import { getPathExists, getWallpaperPath, wallpaperExists,applyImagePosition} from "./SettingsUtils";
+import SettingsUtils from "./SettingsUtils";
 import Scheduler from "../Scheduler";
-const positions = new Map<string, string>([
-  ['right', 'Right'],
-  ['left', 'Left'],
-  ['center', 'Center'],
+const positions = new Map<number, string>([
+  [100, 'Right'],
+  [0, 'Left'],
+  [50, 'Center'],
 ]);
 
 export class SettingsApp extends PluginSettingTab {
@@ -25,7 +25,7 @@ export class SettingsApp extends PluginSettingTab {
 
     if (!anyOptionEnabled) {
       setting.addButton(async (btn) => {
-        const pathExists = await getPathExists(
+        const pathExists = await SettingsUtils.getPathExists(
           this.plugin,
           this.plugin.settings.wallpaperPath
         );
@@ -88,14 +88,14 @@ export class SettingsApp extends PluginSettingTab {
         .setButtonText("Check wallpaper")
         .setIcon("image-file")
         .onClick(async () => {
-          const path = await getWallpaperPath(this.plugin,anyOptionEnabled);
+          const path = await SettingsUtils.getWallpaperPath(this.plugin,anyOptionEnabled);
 
           if (!path) {
             new Notice("No wallpaper path set.");
             return;
           }
 
-          if (await wallpaperExists(this.plugin, path)) {
+          if (await SettingsUtils.wallpaperExists(this.plugin, path)) {
             new Notice("Wallpaper loaded successfully.");
           } else {
             new Notice("Wallpaper file not found. Resetting path.");
@@ -125,63 +125,89 @@ export class SettingsApp extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
-      if (this.plugin.settings.INBUILD) {
-        this.plugin.registerDomEvent(window, 'resize', () => {    
-            if (!this.plugin.settings.INBUILD) return;  
-            const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;  
-            applyImagePosition(  
-                media,  
-                this.plugin.settings.PositionX ?? 50,  
-                this.plugin.settings.PositionY ?? 50  
-            );  
+    new Setting(containerEl)
+      .setName("Enable reposition") 
+      .setDesc("Toggle to adjust the wallpaper's position and scale.")
+      .addToggle(Toggle => {
+        Toggle
+          .setValue(this.plugin.settings.Reposition)
+          .onChange(async (value) => {
+            const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+            this.plugin.settings.Reposition = value;
+            await this.plugin.saveSettings();
+            this.display();
+            if (value) {
+              SettingsUtils.enableReposition(this.plugin);
+              SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
+            } 
+            else {
+              SettingsUtils.disableReposition();
+              this.plugin.applyMediaStyles(media);
+            }
+        })
+      })
+    if (this.plugin.settings.Reposition) {
+      new Setting(containerEl)
+        .setName('Horizontal position')
+        .setDesc('Adjust the horizontal position of the wallpaper.')
+        .addSlider(slider => {
+          slider
+            .setLimits(0, 100, 1) 
+            .setValue(this.plugin.settings.PositionX) 
+            .setDynamicTooltip()
+            .setInstant(true)
+            .onChange(async (value) => {
+              const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+              this.plugin.settings.PositionX = value;
+              await this.plugin.saveSettings();
+              if (media) {
+                SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
+              }
+            });
         });
-        new Setting(containerEl)
-          .setName('Horizontal position')
-          .setDesc('Adjust the horizontal position of the wallpaper.')
-          .addSlider(slider => {
-            slider
-              .setLimits(0, 50, 1) 
-              .setValue(this.plugin.settings.PositionX ?? 50) 
-              .onChange(async (value) => {
-                const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-                this.plugin.settings.PositionX = value;
-                await this.plugin.saveSettings();
-                if (media) {
-                  applyImagePosition(
-                    media,
-                    this.plugin.settings.PositionX,
-                    this.plugin.settings.PositionY ?? 50
-                  );
-                }
-              });
-          });
 
-        new Setting(containerEl)
-          .setName('Vertical position')
-          .setDesc('Adjust the vertical position of the wallpaper.')
-          .addSlider(slider => {
-            slider
-              .setLimits(0, 100, 1)
-              .setValue(this.plugin.settings.PositionY ?? 50)
-              .onChange(async (value) => {
-                const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-                this.plugin.settings.PositionY = value;
-                await this.plugin.saveSettings();
-                if (media) {
-                  applyImagePosition(
-                    media,
-                    this.plugin.settings.PositionX ?? 50,
-                    this.plugin.settings.PositionY
-                  );
-                }
-              });
-          });
+      new Setting(containerEl)
+        .setName('Vertical position')
+        .setDesc('Adjust the vertical position of the wallpaper.')
+        .addSlider(slider => {
+          slider
+            .setLimits(0, 100, 1)
+            .setValue(this.plugin.settings.PositionY)
+            .setDynamicTooltip()
+            .setInstant(true)
+            .onChange(async (value) => {
+              const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+              this.plugin.settings.PositionY = value;
+              await this.plugin.saveSettings();
+              if (media) {
+                SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
+              }
+            });
+        });
+      new Setting(containerEl)
+        .setName('Image scale') 
+        .setDesc('Adjust the size of the wallpaper.') 
+        .addSlider(slider => {
+          slider
+            .setLimits(0.5,2,0.1)
+            .setValue(this.plugin.settings.Scale ?? 1)
+            .setDynamicTooltip()
+            .setInstant(true)
+            .onChange(async (value) => {
+              const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+              this.plugin.settings.Scale = value;
+              await this.plugin.saveSettings();
+              if (media) {
+                SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
+              }
+            });
+        })
       new Setting(containerEl)
         .setName('Image position')
         .setDesc('Adjust the image alignment when the main focus is off-center.')
         .addDropdown((dropdown) => {
           positions.forEach((label, key) => {
-            dropdown.addOption(key, label);
+            dropdown.addOption(key.toString(), label);
           });
           dropdown
             .setValue(this.plugin.settings.Position)
@@ -190,24 +216,30 @@ export class SettingsApp extends PluginSettingTab {
               this.plugin.settings.Position = value;
               await this.plugin.saveSettings();
               if (media) {
-                this.plugin.applyMediaStyles(media);
+                this.plugin.settings.PositionX = Number.parseInt(value);
+                SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
+                this.display();
               }
-          });
+            });
       });
+    }
+    else{
       new Setting(containerEl)
-      .setName('Disable image cover')
-      .setDesc('Toggle this option to turn off object-fit: cover for the image.')
-      .addToggle(toggle => {
-        toggle
-          .setValue(this.plugin.settings.useObjectFit)
-          .onChange(async (value) => {
-            const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-            this.plugin.settings.useObjectFit = value;
-            await this.plugin.saveSettings();
-            if (media) {
-              this.plugin.applyMediaStyles(media);
-            }
-          });
+        .setName('Disable image cover')
+        .setDesc('Toggle this option to turn off object-fit: cover for the image.')
+        .addToggle(toggle => {
+          toggle
+            .setValue(this.plugin.settings.useObjectFit)
+            .onChange(async (value) => {
+              const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+              this.plugin.settings.useObjectFit = value;
+              await this.plugin.saveSettings();
+              if (media) {
+                Object.assign(media.style, {
+                  objectFit: this.plugin.settings.useObjectFit ? 'unset' : 'cover'
+                });
+              }
+            });
       });
     }
     new Setting(containerEl)
@@ -420,6 +452,7 @@ export class SettingsApp extends PluginSettingTab {
           this.display();
         })
       );
+    /*
     new Setting(containerEl)
       .setName("Under construction")
       .setDesc("Feature under construction (may be slightly buggy during testing).")
@@ -435,5 +468,6 @@ export class SettingsApp extends PluginSettingTab {
             if(value === true) applyImagePosition(media,this.plugin.settings.PositionX ?? 50,this.plugin.settings.PositionY);
           })
       );
+      */
   }
 }

@@ -1,6 +1,8 @@
-import { PluginSettingTab, App, Setting } from "obsidian";
-import type LiveWallpaperPlugin from "../main";
+import { PluginSettingTab, App, Setting,Platform } from "obsidian";
+import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
+import type { ModalEffect } from "../main";
 import Scheduler from "../Scheduler";
+import SettingsUtils from "./SettingsUtils";
 
 export class LiveWallpaperSettingTab extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
@@ -83,6 +85,9 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
       const targetCell = row.createEl("td");
       new Setting(targetCell).addText((text) => {
         text.setValue(entry.target).onChange((value) => {
+          if(!SettingsUtils.TargetValid(value)) {
+            return;
+          }
           this.plugin.settings.TextArenas[index].target = value;
           this.plugin.saveSettings();
         });
@@ -91,6 +96,9 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
       const attrCell = row.createEl("td");
       new Setting(attrCell).addText((text) => {
         text.setValue(entry.attribute).onChange((value) => {
+          if (!SettingsUtils.AttributeValid(value)) {
+            return; 
+          }
           this.plugin.RemoveChanges(index);
           this.plugin.settings.TextArenas[index].attribute = value;
           this.plugin.saveSettings();
@@ -124,7 +132,7 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
     );
     let colorPickerRef: any = null;
 
-    const colorSetting = new Setting(advancedOptionsContainer)
+    new Setting(advancedOptionsContainer)
       .setName("Custom background color")
       .setDesc("Set a custom color for the plugin's styling logic")
       .addColorPicker((picker) => {
@@ -150,5 +158,74 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
             }
           })
       );
+    if(Platform.isDesktop)
+    {
+      new Setting(advancedOptionsContainer)
+        .setName("Modal background effect")
+        .setDesc("Choose how the modal background is styled when advanced options are enabled")
+        .addDropdown(dropdown => {
+          const MODAL_EFFECTS: Record<string, string> = {
+            "none": "No effect",
+            "blur": "Apply blur effect",
+            "dim": "Dim the background",
+            'blur+dim': "Apply both blur and dim effects",
+          };
+
+          dropdown
+            .addOptions(MODAL_EFFECTS)
+            .setValue(this.plugin.settings.modalStyle.effect)
+            .onChange(async (value) => {
+              this.plugin.settings.modalStyle.effect = value as ModalEffect;
+              await this.plugin.saveSettings();
+              this.plugin.toggleModalStyles();
+            });
+        });
+      new Setting(advancedOptionsContainer)
+        .setName("Modal blur radius")
+        .setDesc("Adjust the blur intensity applied to the modal background")
+        .addSlider(slider => {
+          slider
+            .setValue(this.plugin.settings.modalStyle.blurRadius)
+            .setLimits(0, 30, 1) 
+            .setInstant(true)
+            .setDynamicTooltip()
+            .onChange(async (value) => {
+              this.plugin.settings.modalStyle.blurRadius = value;
+              this.plugin.toggleModalStyles();
+              await this.plugin.saveSettings();
+            });
+        });
+
+      new Setting(advancedOptionsContainer)
+        .setName("Modal dim opacity")
+        .setDesc("Adjust the darkness level applied to the modal background")
+        .addSlider(slider => {
+          slider
+            .setValue(this.plugin.settings.modalStyle.dimOpacity * 100) 
+            .setLimits(0, 100, 5) 
+            .setInstant(true)
+            .setDynamicTooltip()
+            .onChange(async (value) => {
+              this.plugin.settings.modalStyle.dimOpacity = value / 100;
+              this.plugin.toggleModalStyles();
+              await this.plugin.saveSettings();
+            });
+        });
+      new Setting(advancedOptionsContainer)
+        .setName("Reset modal settings")
+        .setDesc("Restore default blur and dim opacity for the modal background")
+        .addButton(btn =>
+          btn
+            .setIcon("reset")
+            .setTooltip("Reset modal styles to default")
+            .onClick(async () => {
+              const defaults = DEFAULT_SETTINGS;
+              this.plugin.settings.modalStyle = { ...defaults.modalStyle };
+              this.plugin.toggleModalStyles();
+              await this.plugin.saveSettings();
+              this.display();
+            })
+        );
+    }
   }
 }

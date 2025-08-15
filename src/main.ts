@@ -1,6 +1,8 @@
-import { Plugin, PluginSettingTab, Setting, App, ColorComponent,Platform, livePreviewState} from 'obsidian';
-import { LiveWallpaperSettingManager } from './Settings/SettingsManager'
+import { Plugin,Platform } from 'obsidian';
+import { LiveWallpaperSettingManager} from './Settings/SettingsManager'
+import SettingsUtils from './Settings/SettingsUtils'
 import Scheduler from './Scheduler';
+export type ModalEffect = 'none' | 'blur' | 'dim' | 'blur+dim';
 export interface ScheduledWallpapersOptions {
   dayNightMode: boolean;
   weekly: boolean;
@@ -10,13 +12,17 @@ export interface ScheduledWallpapersOptions {
   intervalCheckTime: string; 
   isCustomInterval: boolean;
 }
-
 export interface ScheduledWallpapers {
   wallpaperDayPaths: string[];
   wallpaperWeekPaths: string[];
   wallpaperDayTypes: ('image' | 'video' | 'gif')[];
   wallpaperWeekTypes: ('image' | 'video' | 'gif')[];
   options: ScheduledWallpapersOptions;
+}
+interface ModalStyleSettings {
+  effect: ModalEffect;   
+  blurRadius: number;    
+  dimOpacity: number;    
 }
 interface TextArenaEntry {
   target: string;
@@ -32,6 +38,7 @@ interface LiveWallpaperPluginSettings {
   wallpaperType: 'image' | 'video' | 'gif';
   playbackSpeed: number;
   Quality: boolean;
+  Reposition: boolean;
   opacity: number;
   zIndex: number;
   blurRadius: number;       
@@ -40,11 +47,13 @@ interface LiveWallpaperPluginSettings {
   mobileBackgroundWidth: string;
   mobileBackgroundHeight: string;
   AdnvOpend: boolean;
+  modalStyle: ModalStyleSettings;
   TextArenas: TextArenaEntry[];
   Color: string;
   Position: string;
   PositionX: number;
   PositionY: number;
+  Scale: number;
   useObjectFit: boolean;
   INBUILD: boolean;
   scheduledWallpapers: ScheduledWallpapers;
@@ -55,6 +64,7 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   wallpaperType: 'image',
   playbackSpeed: 1.0,
   Quality: false,
+  Reposition: false,
   opacity: 40,
   zIndex: 5,
   blurRadius: 8,            
@@ -63,6 +73,11 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   mobileBackgroundWidth: '100vw',
   mobileBackgroundHeight: '100vh',
   AdnvOpend: false,
+  modalStyle: {
+    effect: 'blur+dim',
+    blurRadius: 10,
+    dimOpacity: 0.7,
+  },
   TextArenas: [
       { target: "", attribute: "" }
     ],
@@ -70,6 +85,7 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   Position: "Center",
   PositionX: 50,
   PositionY: 50,
+  Scale: 1,
   useObjectFit: true,
   INBUILD: false,
   scheduledWallpapers: {
@@ -93,6 +109,7 @@ export default class LiveWallpaperPlugin extends Plugin {
   private lastPath: string | null = null;
   private lastType: 'image' | 'video' | 'gif' | null = null;
   private _dayNightInterval?: number;
+  public resizeRegistered = false;
   async onload() {
       await this.loadSettings();
       await this.ensureWallpaperFolderExists();
@@ -129,6 +146,20 @@ export default class LiveWallpaperPlugin extends Plugin {
         })
       );
       await this.applyBackgroundColor();
+      if (this.settings.Reposition) {
+        SettingsUtils.enableReposition(this);
+        const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+        if (media && media.parentElement) {
+            const reposition = () => {
+                SettingsUtils.applyImagePosition(media,this.settings.PositionX,this.settings.PositionY,this.settings.Scale);
+            };
+            const imageLoadHandler = () => {
+                reposition();
+                media.removeEventListener('load', imageLoadHandler);
+            };
+            media.addEventListener('load', imageLoadHandler);
+        }
+      }
   }
   async unload()
   {
@@ -136,9 +167,10 @@ export default class LiveWallpaperPlugin extends Plugin {
     this.removeExistingWallpaperElements();
     this.RemoveModalStyles();
     this.stopDayNightWatcher();
+    SettingsUtils.disableReposition();
     document.body.classList.remove('live-wallpaper-active');
     await this.LoadOrUnloadChanges(false);
-    await super.unload(); 
+    super.unload(); 
   }
   async loadSettings() {
     try {
@@ -264,6 +296,16 @@ export default class LiveWallpaperPlugin extends Plugin {
           this.lastType = newType;
         }
       }
+      if (this.settings.Reposition) {
+        await this.waitForMediaDimensions(media);
+        SettingsUtils.applyImagePosition(
+          media,
+          this.settings.PositionX,
+          this.settings.PositionY,
+          this.settings.Scale
+        );
+      }
+
       await this.saveSettings();
       return;
     }
@@ -280,6 +322,15 @@ export default class LiveWallpaperPlugin extends Plugin {
     document.body.classList.add('live-wallpaper-active');
     this.lastPath = newPath;
     this.lastType = newType;
+    if (this.settings.Reposition) {
+      await this.waitForMediaDimensions(newMedia!);
+      SettingsUtils.applyImagePosition(
+        newMedia!,
+        this.settings.PositionX,
+        this.settings.PositionY,
+        this.settings.Scale
+      );
+    }
   }
 
   private  async ensureWallpaperFolderExists(): Promise<boolean> {
@@ -294,6 +345,26 @@ export default class LiveWallpaperPlugin extends Plugin {
     }
   }
 
+  async waitForMediaDimensions(element: HTMLImageElement | HTMLVideoElement): Promise<void> {
+    return new Promise((resolve) => {
+      if (element instanceof HTMLImageElement) {
+        if (element.complete && element.naturalWidth !== 0) {
+          resolve();
+        } 
+        else {
+          element.addEventListener("load", () => resolve(), { once: true });
+        }
+      } 
+      else {
+        if (element.readyState >= 1 && element.videoWidth !== 0) {
+          resolve();
+        } 
+        else {
+          element.addEventListener("loadedmetadata", () => resolve(), { once: true });
+        }
+      }
+    });
+  }
 
   private removeExistingWallpaperElements() {
       const existingContainer = document.getElementById('live-wallpaper-container');
@@ -361,7 +432,7 @@ export default class LiveWallpaperPlugin extends Plugin {
   }
   public applyMediaStyles(media: HTMLImageElement | HTMLVideoElement) {
     media.removeAttribute("style");
-    if(this.settings.INBUILD)
+    if(this.settings.Reposition)
     {
       Object.assign(media.style, {
         width: '100%', 
@@ -618,34 +689,23 @@ export default class LiveWallpaperPlugin extends Plugin {
     const el = isVar
       ? (document.body.classList.contains("theme-dark") ? document.body : document.documentElement)
       : document.querySelector<HTMLElement>(target);
-
     if (!el) return;
-
-    if (isVar) {
-      el.style.setProperty(attr, "transparent", "important");
-    } else {
-      el.style.setProperty(attr, "transparent", "important");
-    }
+    el.style.setProperty(attr, "transparent", "important");
   }
   public async RemoveChanges(id: number, oldAttribute?: string): Promise<void> {
-    if (id < 0 || id >= this.settings.TextArenas.length) {
-      return;
-    }
+    if (id < 0 || id >= this.settings.TextArenas.length) return;
 
     const attribute = (oldAttribute ?? this.settings.TextArenas[id].attribute)?.trim();
     const target = this.settings.TextArenas[id].target?.trim();
-    if (!attribute || !target) {
-      return;
-    }
+
+    if (!attribute) return;
 
     try {
       if (!attribute.startsWith("--")) {
+        if (!target) return; 
         const el = document.querySelector<HTMLElement>(target);
-        if (el) {
+        if (el && el.style.getPropertyValue(attribute)) {
           el.style.removeProperty(attribute);
-          if (!el.getAttribute("style")) {
-            el.removeAttribute("style");
-          }
         }
       } else {
         const el = document.body.classList.contains("theme-dark")
@@ -661,34 +721,42 @@ export default class LiveWallpaperPlugin extends Plugin {
 
     this.LoadOrUnloadChanges(true);
   }
-  public toggleModalStyles() {
-      const styleId = "extrastyles-dynamic-css";
-      const existingStyle = document.getElementById(styleId);
 
-      if (this.settings.AdnvOpend) {
-          if (!existingStyle) {
-              const style = document.createElement("style");
-              style.id = styleId;
-              style.textContent = `
-                  .modal-container.mod-dim {
-                      background: rgba(0, 0, 0, 0.7);
-                      backdrop-filter: blur(10px);
-                  }
-                  .modal-container {
-                      background: rgba(0, 0, 0, 0.7);
-                      backdrop-filter: blur(10px);
-                  }
-              `;
-              document.head.appendChild(style);
-          }
-          this.LoadOrUnloadChanges(true);
-      } 
-      else {
-          this.LoadOrUnloadChanges(false);
-          if (existingStyle) {
-            existingStyle.remove();
-          }
+  public toggleModalStyles() {
+    const styleId = "extrastyles-dynamic-css";
+    let style = document.getElementById(styleId) as HTMLStyleElement;
+
+    if (this.settings.AdnvOpend) {
+      if (!style) {
+        style = document.createElement("style");
+        style.id = styleId;
+        document.head.appendChild(style);
       }
+
+      const { effect, blurRadius, dimOpacity } = this.settings.modalStyle;
+
+      let background = "transparent";
+      let backdrop = "none";
+
+      if (effect.includes("dim")) {
+        background = `rgba(0, 0, 0, ${dimOpacity})`;
+      }
+      if (effect.includes("blur")) {
+        backdrop = `blur(${blurRadius}px)`;
+      }
+
+      style.textContent = `
+        .modal-container.mod-dim,
+        .modal-container {
+          background: ${background};
+          backdrop-filter: ${backdrop};
+        }
+      `;
+    } else {
+      style?.remove();
+    }
+
+    this.LoadOrUnloadChanges(this.settings.AdnvOpend);
   }
   private RemoveModalStyles()
   {

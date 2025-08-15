@@ -1,82 +1,117 @@
 import { Notice } from "obsidian";
 import LiveWallpaperPlugin from "../main";
 import Scheduler from "../Scheduler";
-
-export async function getWallpaperPath(plugin: LiveWallpaperPlugin,anyOptionEnabled: boolean,): Promise<string> {
-	const settings = plugin.settings;
-	let path = "";
-	if (!anyOptionEnabled) {
-		path = `${plugin.app.vault.configDir}/${settings.wallpaperPath}`;
-	} 
-  	else {
-		const isWeek = settings.scheduledWallpapers.options.weekly;
-		const paths = isWeek
-			? settings.scheduledWallpapers.wallpaperWeekPaths
-			: settings.scheduledWallpapers.wallpaperDayPaths;
-
-		const index = Scheduler.applyScheduledWallpaper(
-			paths,
-			settings.scheduledWallpapers.options,
-		);
-
-		if (index !== null) {
-			const selectedPath = paths[index];
-			path = `${plugin.app.vault.configDir}/${selectedPath}`;
-			settings.wallpaperPath = selectedPath;
-			await plugin.saveSettings();
-		} 
-    else {
-			new Notice("No wallpaper path set.");
-			settings.wallpaperPath = "";
-			await plugin.saveSettings();
-			return "";
-		}
+export default class SettingsUtils {
+	static resizeHandler: (() => void) | null = null;
+	static AttributeValid(attribute: string): boolean {
+		const attr = attribute.trim();
+		if (attr === "") return false;
+		if (attr.startsWith("--")) return true; 
+		return false;
 	}
 
-	return path;
-}
-export async function getPathExists(plugin: LiveWallpaperPlugin, relativePath: string): Promise<boolean> {
-  if (!relativePath || relativePath.trim() === "") {
-    return false;
-  }
+	static TargetValid(target: string): boolean {
+		const trimmed = target.trim();
+		if (trimmed === '') return false;
 
-  const fullPath = `${plugin.app.vault.configDir}/${relativePath}`;
-  return await wallpaperExists(plugin, fullPath);
-}
+		try {
+			document.createDocumentFragment().querySelector(trimmed);
+			return true; 
+		} catch {
+			return false; 
+		}
+	}
+	static async getWallpaperPath(plugin: LiveWallpaperPlugin,anyOptionEnabled: boolean): Promise<string> {
+		const settings = plugin.settings;
+		let path = "";
+		if (!anyOptionEnabled) {
+			path = `${plugin.app.vault.configDir}/${settings.wallpaperPath}`;
+		} else {
+			const isWeek = settings.scheduledWallpapers.options.weekly;
+			const paths = isWeek
+				? settings.scheduledWallpapers.wallpaperWeekPaths
+				: settings.scheduledWallpapers.wallpaperDayPaths;
 
-export async function wallpaperExists(
-	plugin: LiveWallpaperPlugin,
-	path: string,
-): Promise<boolean> {
-	return await plugin.app.vault.adapter.exists(path);
-}
-export function applyImagePosition(element: HTMLImageElement | HTMLVideoElement,posXPercent: number,posYPercent: number) {
-  const container = element.parentElement!;
-  const containerWidth = container.clientWidth;
-  const containerHeight = container.clientHeight;
+			const index = Scheduler.applyScheduledWallpaper(
+				paths,
+				settings.scheduledWallpapers.options,
+			);
 
-  const naturalWidth = element instanceof HTMLImageElement
-    ? element.naturalWidth
-    : element.videoWidth;
-  const naturalHeight = element instanceof HTMLImageElement
-    ? element.naturalHeight
-    : element.videoHeight;
+			if (index !== null) {
+				const selectedPath = paths[index];
+				path = `${plugin.app.vault.configDir}/${selectedPath}`;
+				settings.wallpaperPath = selectedPath;
+				await plugin.saveSettings();
+			} else {
+				new Notice("No wallpaper path set.");
+				settings.wallpaperPath = "";
+				await plugin.saveSettings();
+				return "";
+			}
+		}
 
-  const scale = Math.max(containerWidth / naturalWidth, containerHeight / naturalHeight);
+		return path;
+	}
+	static async getPathExists(plugin: LiveWallpaperPlugin,relativePath: string): Promise<boolean> {
+		if (!relativePath || relativePath.trim() === "") {
+			return false;
+		}
 
-  const scaledWidth = naturalWidth * scale;
-  const scaledHeight = naturalHeight * scale;
+		const fullPath = `${plugin.app.vault.configDir}/${relativePath}`;
+		return await this.wallpaperExists(plugin, fullPath);
+	}
 
-  const maxOffsetX = (scaledWidth - containerWidth) / 2;
-  const maxOffsetY = (scaledHeight - containerHeight) / 2;
+	static async wallpaperExists(plugin: LiveWallpaperPlugin,path: string): Promise<boolean> {
+		return await plugin.app.vault.adapter.exists(path);
+	}
+	static async applyImagePosition(element: HTMLImageElement | HTMLVideoElement,posXPercent: number,posYPercent: number,scaleFactor: number) {
+		if (element.parentElement === null) return;
+		const container = element.parentElement!;
+		const containerWidth = container.clientWidth;
+		const containerHeight = container.clientHeight;
 
-  const offsetX = (posXPercent - 50) / 50 * maxOffsetX;
-  const offsetY = (posYPercent - 50) / 50 * maxOffsetY;
+		const naturalWidth =
+			element instanceof HTMLImageElement ? element.naturalWidth : element.videoWidth;
+		const naturalHeight =
+			element instanceof HTMLImageElement ? element.naturalHeight : element.videoHeight;
 
-  element.style.width = `${scaledWidth}px`;
-  element.style.height = `${scaledHeight}px`;
-  element.style.objectFit = 'cover';
-  element.style.position = 'absolute';
-  element.style.left = `${containerWidth / 2 - scaledWidth / 2 + offsetX}px`;
-  element.style.top = `${containerHeight / 2 - scaledHeight / 2 + offsetY}px`;
+		const minScale = Math.max(containerWidth / naturalWidth, containerHeight / naturalHeight);
+
+		const scale = Math.max(minScale, minScale * scaleFactor);
+
+		const scaledWidth = naturalWidth * scale;
+		const scaledHeight = naturalHeight * scale;
+
+		const maxOffsetX = (scaledWidth - containerWidth) / 2;
+		const maxOffsetY = (scaledHeight - containerHeight) / 2;
+
+		const offsetX = ((posXPercent - 50) / 50) * maxOffsetX;
+		const offsetY = ((posYPercent - 50) / 50) * maxOffsetY;
+		element.style.width = `${scaledWidth}px`;
+		element.style.height = `${scaledHeight}px`;
+		element.style.objectFit = "cover";
+		element.style.position = "absolute";
+		element.style.left = `${containerWidth / 2 - scaledWidth / 2 + offsetX}px`;
+		element.style.top = `${containerHeight / 2 - scaledHeight / 2 + offsetY}px`;
+	}
+
+	static enableReposition(plugin: LiveWallpaperPlugin) {
+		if (this.resizeHandler) return; 
+		this.resizeHandler = () => {
+			const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+			if (!media) return;
+			if (!plugin.settings.Reposition) {
+				plugin.applyMediaStyles(media);
+				return;
+			}
+			this.applyImagePosition(media,plugin.settings.PositionX ?? 50,plugin.settings.PositionY ?? 50, plugin.settings.Scale ?? 1);
+		};
+		window.addEventListener('resize', this.resizeHandler);
+	}
+
+	static disableReposition() {
+		if (!this.resizeHandler) return;
+		window.removeEventListener('resize', this.resizeHandler);
+		this.resizeHandler = null;
+	}
 }

@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import LiveWallpaperPlugin from "../main";
 import Scheduler from "../Scheduler";
-import { getPathExists } from "./SettingsUtils";
+import SettingsUtils from "./SettingsUtils";
 export class ScheduledApp extends PluginSettingTab {
 	plugin: LiveWallpaperPlugin;
 
@@ -132,10 +132,10 @@ export class ScheduledApp extends PluginSettingTab {
 							this.plugin.settings.scheduledWallpapers.wallpaperDayPaths[1];
 
 						const dayExists = dayPath
-							? await getPathExists(this.plugin, dayPath)
+							? await SettingsUtils.getPathExists(this.plugin, dayPath)
 							: false;
 						const nightExists = nightPath
-							? await getPathExists(this.plugin, nightPath)
+							? await SettingsUtils.getPathExists(this.plugin, nightPath)
 							: false;
 
 						if (dayExists && nightExists) {
@@ -225,7 +225,7 @@ export class ScheduledApp extends PluginSettingTab {
 					btn.setButtonText("Check").onClick(async () => {
 						const missingDays = [];
 						for (let i = 0; i < paths.length; i++) {
-							const pathExists = await getPathExists(this.plugin, paths[i]);
+							const pathExists = await SettingsUtils.getPathExists(this.plugin, paths[i]);
 							if (!pathExists) {
 								missingDays.push(daysOfWeek[i]);
 							}

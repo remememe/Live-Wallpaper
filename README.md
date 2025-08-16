@@ -1,11 +1,13 @@
 # Live Background Plugin  
 
-**Bring your notes to life** with animated wallpapers (e.g., swaying forests, flowing clouds, or cosmic visuals).  
+Live Background Plugin helps you customize Obsidian’s appearance
+by adding animated or static backgrounds to your notes.
 
 ## Features
 - **Supports videos (MP4, WebM), GIFs, and images** — use your own files or choose from built-in templates
 - **Wallpaper history** — easily switch back to previously used wallpapers
-- **Full-resolution wallpapers** — allows you to use images in their original size without downscaling  
+- **Full-resolution wallpapers** — allows you to use images in their original size without downscaling 
+- **Reposition** — adjust the size and placement of your background
 - **Customizable effects:**
   - Opacity (0–80%)
   - Blur (0–20px)
@@ -38,11 +40,13 @@
 - **Custom Background Color**  
   - Pick any color to use in the plugin’s styling logic  
   - Quickly reset to default with one click  
-- **Built-in CSS Editor**  
-  - Live-edit your own CSS directly in the UI (real-time preview)  
 
   > **Note:** The built-in CSS editor has been removed in recent versions of the plugin to prevent accidental overwriting of user styles during updates. For full control, please use the snippet method described above.
-
+- **Modal Background Effects**
+  Customize how modals look when advanced options are enabled.
+  - Choose from blur, dim, or combined effects
+  - Adjust blur intensity and dim opacity with sliders
+  
   ---
 
   ### Optional: UI-based CSS customization

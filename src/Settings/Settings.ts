@@ -452,22 +452,5 @@ export class SettingsApp extends PluginSettingTab {
           this.display();
         })
       );
-    /*
-    new Setting(containerEl)
-      .setName("Under construction")
-      .setDesc("Feature under construction (may be slightly buggy during testing).")
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.INBUILD)
-          .onChange(async (value) => {
-            const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-            this.plugin.settings.INBUILD = value;
-            await this.plugin.saveSettings();
-            this.display();
-            this.plugin.applyMediaStyles(media);
-            if(value === true) applyImagePosition(media,this.plugin.settings.PositionX ?? 50,this.plugin.settings.PositionY);
-          })
-      );
-      */
   }
 }

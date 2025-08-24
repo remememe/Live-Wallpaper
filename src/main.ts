@@ -176,7 +176,6 @@ export default class LiveWallpaperPlugin extends Plugin {
     try {
         const loaded = await this.loadData();
         this.settings = { ...DEFAULT_SETTINGS, ...loaded };
-        await this.LoadOrUnloadChanges(true);
       } catch (e) {
         console.error("Live Wallpaper Plugin – loadSettings error:", e);
         this.settings = { ...DEFAULT_SETTINGS };
@@ -270,28 +269,30 @@ export default class LiveWallpaperPlugin extends Plugin {
           newMedia.style.transition = 'opacity 1s ease-in-out';
           container.appendChild(newMedia);
 
-          requestAnimationFrame(() => {
-            newMedia.style.opacity = '1';
-          });
+          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+          await new Promise((resolve) => setTimeout(resolve, 20));
 
           const medias = container.querySelectorAll('[id^="live-wallpaper-media"]');
+          await this.waitForMediaDimensions(newMedia);
 
           medias.forEach((el, i) => {
             if (i < medias.length - 1) {
-              const htmlEl = el as HTMLElement; 
+              const htmlEl = el as HTMLElement;
 
               htmlEl.style.transition = 'opacity 1s ease-in-out';
               htmlEl.style.opacity = '0';
+              newMedia.style.opacity = '1';
 
               setTimeout(() => {
                 if (htmlEl.parentElement) {
                   htmlEl.remove();
                 }
-              }, 1000);
+              }, 3000);
             }
           });
-          media = newMedia;
 
+          media = newMedia;
           this.lastPath = newPath;
           this.lastType = newType;
         }

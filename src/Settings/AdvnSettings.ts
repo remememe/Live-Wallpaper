@@ -35,21 +35,22 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
 
     toggleAdvancedButton.onclick = () => {
       this.plugin.settings.AdnvOpend = !this.plugin.settings.AdnvOpend;
-      advancedOptionsContainer.style.display = this.plugin.settings.AdnvOpend
-        ? "block"
-        : "none";
-      toggleAdvancedButton.setText(
-        this.plugin.settings.AdnvOpend
-          ? "Hide advanced options"
-          : "Show advanced options"
-      );
+      advancedOptionsContainer.style.display = this.plugin.settings.AdnvOpend ? "block" : "none";
+      toggleAdvancedButton.setText(this.plugin.settings.AdnvOpend ? "Hide advanced options" : "Show advanced options");
       this.plugin.toggleModalStyles();
-      this.plugin.settings.opacity = 40;
-      this.plugin.settings.zIndex = 5;
+      if(this.plugin.settings.AdnvOpend === false) {
+        this.plugin.settings.opacity = 40;
+        this.plugin.settings.zIndex = 5;
+      } 
+      else {
+        this.plugin.settings.opacity = 100; 
+        this.plugin.settings.zIndex = 0;    
+      }
       this.plugin.applyWallpaper(anyOptionEnabled);
       this.plugin.saveSettings();
       this.display();
     };
+
 
     const tableDescription = advancedOptionsContainer.createEl("p", {
       cls: "advanced-options-description",

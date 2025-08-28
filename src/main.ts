@@ -56,6 +56,7 @@ interface LiveWallpaperPluginSettings {
   Scale: number;
   useObjectFit: boolean;
   INBUILD: boolean;
+  SizeLimited: boolean;
   scheduledWallpapers: ScheduledWallpapers;
   migrated?: boolean; 
 }
@@ -88,6 +89,7 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   Scale: 1,
   useObjectFit: true,
   INBUILD: false,
+  SizeLimited: true,
   scheduledWallpapers: {
     wallpaperDayPaths: [],
     wallpaperWeekPaths: [],
@@ -306,7 +308,6 @@ export default class LiveWallpaperPlugin extends Plugin {
           this.settings.Scale
         );
       }
-
       await this.saveSettings();
       return;
     }
@@ -480,7 +481,7 @@ export default class LiveWallpaperPlugin extends Plugin {
               return;
           }
 
-          if (file.size > 12 * 1024 * 1024) {
+          if (this.settings.SizeLimited && file.size > 12 * 1024 * 1024) {
               alert('File is too large (max 12MB).');
               return;
           }
@@ -723,7 +724,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     this.LoadOrUnloadChanges(true);
   }
 
-  public toggleModalStyles() {
+  public async toggleModalStyles() {
     const styleId = "extrastyles-dynamic-css";
     let style = document.getElementById(styleId) as HTMLStyleElement;
 
@@ -756,8 +757,14 @@ export default class LiveWallpaperPlugin extends Plugin {
     } else {
       style?.remove();
     }
-
-    this.LoadOrUnloadChanges(this.settings.AdnvOpend);
+    const wallpaperExists = await SettingsUtils.getPathExists(this, this.settings.wallpaperPath);
+    if (!wallpaperExists) {
+      this.LoadOrUnloadChanges(false);
+      return;
+    }
+    else{
+      this.LoadOrUnloadChanges(this.settings.AdnvOpend)
+    }
   }
   private RemoveModalStyles()
   {

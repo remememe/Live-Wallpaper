@@ -126,6 +126,17 @@ export class SettingsApp extends PluginSettingTab {
           });
       });
     new Setting(containerEl)
+      .setName("Limit wallpaper size")
+      .setDesc("Enable to restrict wallpapers to a maximum size (currently 12 MB). Disable for unlimited size.")
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.SizeLimited)
+          .onChange(async (value) => {
+            this.plugin.settings.SizeLimited = value;
+            await this.plugin.saveSettings();
+          });
+      });
+    new Setting(containerEl)
       .setName("Enable reposition") 
       .setDesc("Toggle to adjust the wallpaper's position and scale.")
       .addToggle(Toggle => {

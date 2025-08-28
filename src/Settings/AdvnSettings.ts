@@ -33,11 +33,11 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
       ? "block"
       : "none";
 
-    toggleAdvancedButton.onclick = () => {
+    toggleAdvancedButton.onclick = async () => {
       this.plugin.settings.AdnvOpend = !this.plugin.settings.AdnvOpend;
       advancedOptionsContainer.style.display = this.plugin.settings.AdnvOpend ? "block" : "none";
       toggleAdvancedButton.setText(this.plugin.settings.AdnvOpend ? "Hide advanced options" : "Show advanced options");
-      this.plugin.toggleModalStyles();
+      await this.plugin.toggleModalStyles();
       if(this.plugin.settings.AdnvOpend === false) {
         this.plugin.settings.opacity = 40;
         this.plugin.settings.zIndex = 5;

@@ -56,6 +56,7 @@ interface LiveWallpaperPluginSettings {
   Scale: number;
   useObjectFit: boolean;
   INBUILD: boolean;
+  SizeLimited: boolean;
   scheduledWallpapers: ScheduledWallpapers;
   migrated?: boolean; 
 }
@@ -88,6 +89,7 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   Scale: 1,
   useObjectFit: true,
   INBUILD: false,
+  SizeLimited: true,
   scheduledWallpapers: {
     wallpaperDayPaths: [],
     wallpaperWeekPaths: [],
@@ -110,6 +112,8 @@ export default class LiveWallpaperPlugin extends Plugin {
   private lastType: 'image' | 'video' | 'gif' | null = null;
   private _dayNightInterval?: number;
   public resizeRegistered = false;
+  public debouncedSave = SettingsUtils.SaveSettingsDebounced(this);  
+  public debouncedApplyWallpaper = SettingsUtils.ApplyWallpaperDebounced(this);
   async onload() {
       await this.loadSettings();
       await this.ensureWallpaperFolderExists();
@@ -225,7 +229,8 @@ export default class LiveWallpaperPlugin extends Plugin {
   private isValidWallpaperType(t: any): t is 'image' | 'video' | 'gif' {
     return ['image', 'video', 'gif'].includes(t);
   }
-  async applyWallpaper(anyOptionEnabled: boolean) {
+  public async applyWallpaper(anyOptionEnabled: boolean) {
+    console.log("asdads");
     let newPath: string | null = null;
     let newType: 'image' | 'video' | 'gif' = this.settings.wallpaperType;
     if (anyOptionEnabled) {
@@ -306,8 +311,6 @@ export default class LiveWallpaperPlugin extends Plugin {
           this.settings.Scale
         );
       }
-
-      await this.saveSettings();
       return;
     }
     this.removeExistingWallpaperElements();
@@ -480,7 +483,7 @@ export default class LiveWallpaperPlugin extends Plugin {
               return;
           }
 
-          if (file.size > 12 * 1024 * 1024) {
+          if (this.settings.SizeLimited && file.size > 12 * 1024 * 1024) {
               alert('File is too large (max 12MB).');
               return;
           }
@@ -520,7 +523,8 @@ export default class LiveWallpaperPlugin extends Plugin {
                 this.settings.wallpaperPath = activeRelPath;
                 this.settings.wallpaperType = this.getWallpaperType(fileName);
               }
-              this.applyWallpaper(anyOptionEnabled);
+              await this.applyWallpaper(anyOptionEnabled);
+              this.debouncedSave();
           } catch (error) {
               alert('Could not save the file. Check disk permissions.');
               console.error(error);
@@ -723,7 +727,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     this.LoadOrUnloadChanges(true);
   }
 
-  public toggleModalStyles() {
+  public async toggleModalStyles() {
     const styleId = "extrastyles-dynamic-css";
     let style = document.getElementById(styleId) as HTMLStyleElement;
 
@@ -756,8 +760,14 @@ export default class LiveWallpaperPlugin extends Plugin {
     } else {
       style?.remove();
     }
-
-    this.LoadOrUnloadChanges(this.settings.AdnvOpend);
+    const wallpaperExists = await SettingsUtils.getPathExists(this, this.settings.wallpaperPath);
+    if (!wallpaperExists) {
+      this.LoadOrUnloadChanges(false);
+      return;
+    }
+    else{
+      this.LoadOrUnloadChanges(this.settings.AdnvOpend)
+    }
   }
   private RemoveModalStyles()
   {

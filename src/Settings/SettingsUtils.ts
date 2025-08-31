@@ -1,4 +1,4 @@
-import { Notice } from "obsidian";
+import { Notice, debounce } from "obsidian";
 import LiveWallpaperPlugin from "../main";
 import Scheduler from "../Scheduler";
 export default class SettingsUtils {
@@ -6,22 +6,25 @@ export default class SettingsUtils {
 	static AttributeValid(attribute: string): boolean {
 		const attr = attribute.trim();
 		if (attr === "") return false;
-		if (attr.startsWith("--")) return true; 
+		if (attr.startsWith("--")) return true;
 		return false;
 	}
 
 	static TargetValid(target: string): boolean {
 		const trimmed = target.trim();
-		if (trimmed === '') return false;
+		if (trimmed === "") return false;
 
 		try {
 			document.createDocumentFragment().querySelector(trimmed);
-			return true; 
+			return true;
 		} catch {
-			return false; 
+			return false;
 		}
 	}
-	static async getWallpaperPath(plugin: LiveWallpaperPlugin,anyOptionEnabled: boolean): Promise<string> {
+	static async getWallpaperPath(
+		plugin: LiveWallpaperPlugin,
+		anyOptionEnabled: boolean,
+	): Promise<string> {
 		const settings = plugin.settings;
 		let path = "";
 		if (!anyOptionEnabled) {
@@ -52,7 +55,10 @@ export default class SettingsUtils {
 
 		return path;
 	}
-	static async getPathExists(plugin: LiveWallpaperPlugin,relativePath: string): Promise<boolean> {
+	static async getPathExists(
+		plugin: LiveWallpaperPlugin,
+		relativePath: string,
+	): Promise<boolean> {
 		if (!relativePath || relativePath.trim() === "") {
 			return false;
 		}
@@ -61,21 +67,36 @@ export default class SettingsUtils {
 		return await this.wallpaperExists(plugin, fullPath);
 	}
 
-	static async wallpaperExists(plugin: LiveWallpaperPlugin,path: string): Promise<boolean> {
+	static async wallpaperExists(
+		plugin: LiveWallpaperPlugin,
+		path: string,
+	): Promise<boolean> {
 		return await plugin.app.vault.adapter.exists(path);
 	}
-	static async applyImagePosition(element: HTMLImageElement | HTMLVideoElement,posXPercent: number,posYPercent: number,scaleFactor: number) {
+	static async applyImagePosition(
+		element: HTMLImageElement | HTMLVideoElement,
+		posXPercent: number,
+		posYPercent: number,
+		scaleFactor: number,
+	) {
 		if (element.parentElement === null) return;
 		const container = element.parentElement!;
 		const containerWidth = container.clientWidth;
 		const containerHeight = container.clientHeight;
 
 		const naturalWidth =
-			element instanceof HTMLImageElement ? element.naturalWidth : element.videoWidth;
+			element instanceof HTMLImageElement
+				? element.naturalWidth
+				: element.videoWidth;
 		const naturalHeight =
-			element instanceof HTMLImageElement ? element.naturalHeight : element.videoHeight;
+			element instanceof HTMLImageElement
+				? element.naturalHeight
+				: element.videoHeight;
 
-		const minScale = Math.max(containerWidth / naturalWidth, containerHeight / naturalHeight);
+		const minScale = Math.max(
+			containerWidth / naturalWidth,
+			containerHeight / naturalHeight,
+		);
 
 		const scale = Math.max(minScale, minScale * scaleFactor);
 
@@ -96,22 +117,39 @@ export default class SettingsUtils {
 	}
 
 	static enableReposition(plugin: LiveWallpaperPlugin) {
-		if (this.resizeHandler) return; 
+		if (this.resizeHandler) return;
 		this.resizeHandler = () => {
-			const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+			const media = document.getElementById("live-wallpaper-media") as
+				| HTMLImageElement
+				| HTMLVideoElement;
 			if (!media) return;
 			if (!plugin.settings.Reposition) {
 				plugin.applyMediaStyles(media);
 				return;
 			}
-			this.applyImagePosition(media,plugin.settings.PositionX ?? 50,plugin.settings.PositionY ?? 50, plugin.settings.Scale ?? 1);
+			this.applyImagePosition(
+				media,
+				plugin.settings.PositionX ?? 50,
+				plugin.settings.PositionY ?? 50,
+				plugin.settings.Scale ?? 1,
+			);
 		};
-		window.addEventListener('resize', this.resizeHandler);
+		window.addEventListener("resize", this.resizeHandler);
 	}
 
 	static disableReposition() {
 		if (!this.resizeHandler) return;
-		window.removeEventListener('resize', this.resizeHandler);
+		window.removeEventListener("resize", this.resizeHandler);
 		this.resizeHandler = null;
+	}
+	static SaveSettingsDebounced(plugin: LiveWallpaperPlugin) {
+		return debounce(async () => {
+			await plugin.saveSettings();
+		}, 300);
+	}
+	static ApplyWallpaperDebounced(plugin: LiveWallpaperPlugin) {
+		return debounce(async (anyOptionEnabled: boolean) => {
+			await plugin.applyWallpaper(anyOptionEnabled);
+		}, 300);
 	}
 }

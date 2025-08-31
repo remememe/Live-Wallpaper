@@ -7,7 +7,6 @@ const positions = new Map<number, string>([
   [0, 'Left'],
   [50, 'Center'],
 ]);
-
 export class SettingsApp extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
   constructor(app: App, plugin: LiveWallpaperPlugin) {
@@ -126,6 +125,17 @@ export class SettingsApp extends PluginSettingTab {
           });
       });
     new Setting(containerEl)
+      .setName("Limit wallpaper size")
+      .setDesc("Enable to restrict wallpapers to a maximum size (currently 12 MB). Disable for unlimited size.")
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.SizeLimited)
+          .onChange(async (value) => {
+            this.plugin.settings.SizeLimited = value;
+            await this.plugin.saveSettings();
+          });
+      });
+    new Setting(containerEl)
       .setName("Enable reposition") 
       .setDesc("Toggle to adjust the wallpaper's position and scale.")
       .addToggle(Toggle => {
@@ -159,7 +169,7 @@ export class SettingsApp extends PluginSettingTab {
             .onChange(async (value) => {
               const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
               this.plugin.settings.PositionX = value;
-              await this.plugin.saveSettings();
+              this.plugin.debouncedSave();
               if (media) {
                 SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
               }
@@ -178,7 +188,7 @@ export class SettingsApp extends PluginSettingTab {
             .onChange(async (value) => {
               const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
               this.plugin.settings.PositionY = value;
-              await this.plugin.saveSettings();
+              this.plugin.debouncedSave();
               if (media) {
                 SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
               }
@@ -196,7 +206,7 @@ export class SettingsApp extends PluginSettingTab {
             .onChange(async (value) => {
               const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
               this.plugin.settings.Scale = value;
-              await this.plugin.saveSettings();
+              this.plugin.debouncedSave();
               if (media) {
                 SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
               }
@@ -214,7 +224,7 @@ export class SettingsApp extends PluginSettingTab {
             .onChange(async (value) => {
               const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
               this.plugin.settings.Position = value;
-              await this.plugin.saveSettings();
+              this.plugin.debouncedSave();
               if (media) {
                 this.plugin.settings.PositionX = Number.parseInt(value);
                 SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
@@ -233,7 +243,7 @@ export class SettingsApp extends PluginSettingTab {
             .onChange(async (value) => {
               const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
               this.plugin.settings.useObjectFit = value;
-              await this.plugin.saveSettings();
+              this.plugin.debouncedSave();
               if (media) {
                 Object.assign(media.style, {
                   objectFit: this.plugin.settings.useObjectFit ? 'unset' : 'cover'
@@ -272,8 +282,8 @@ export class SettingsApp extends PluginSettingTab {
             if (!this.plugin.settings.AdnvOpend) {
               this.plugin.settings.opacity = v;
               valueEl.textContent = ` ${v}%`;
-              await this.plugin.saveSettings();
-              this.plugin.applyWallpaper(anyOptionEnabled);
+              this.plugin.debouncedApplyWallpaper(anyOptionEnabled);
+              this.plugin.debouncedSave();
             }
           });
       });
@@ -293,8 +303,8 @@ export class SettingsApp extends PluginSettingTab {
           .onChange(async (v) => {
             this.plugin.settings.blurRadius = v;
             valueEl.textContent = ` ${v}px`;
-            await this.plugin.saveSettings();
-            this.plugin.applyWallpaper(anyOptionEnabled);
+            this.plugin.debouncedApplyWallpaper(anyOptionEnabled);
+            this.plugin.debouncedSave();
           });
       });
 
@@ -313,8 +323,8 @@ export class SettingsApp extends PluginSettingTab {
           .onChange(async (v) => {
             this.plugin.settings.brightness = v;
             valueEl.textContent = ` ${v}%`;
-            await this.plugin.saveSettings();
-            this.plugin.applyWallpaper(anyOptionEnabled);
+            this.plugin.debouncedApplyWallpaper(anyOptionEnabled);
+            this.plugin.debouncedSave();
           });
       });
 
@@ -341,8 +351,8 @@ export class SettingsApp extends PluginSettingTab {
             if (!this.plugin.settings.AdnvOpend) {
               this.plugin.settings.zIndex = v;
               valueEl.textContent = ` ${v}`;
-              await this.plugin.saveSettings();
-              this.plugin.applyWallpaper(anyOptionEnabled);
+              this.plugin.debouncedApplyWallpaper(anyOptionEnabled);
+              this.plugin.debouncedSave();
             }
           });
       });
@@ -369,8 +379,8 @@ export class SettingsApp extends PluginSettingTab {
           .setValue(this.plugin.settings.playbackSpeed)
           .onChange(async (val) => {
             this.plugin.settings.playbackSpeed = val;
-            await this.plugin.saveSettings();
-            await this.plugin.applyWallpaper(false);
+            this.plugin.debouncedApplyWallpaper(false);
+            this.plugin.debouncedSave();
             valueEl.setText(`${val.toFixed(2)}x`);
           });
       });

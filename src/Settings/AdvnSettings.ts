@@ -33,11 +33,11 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
       ? "block"
       : "none";
 
-    toggleAdvancedButton.onclick = () => {
+    toggleAdvancedButton.onclick = async () => {
       this.plugin.settings.AdnvOpend = !this.plugin.settings.AdnvOpend;
       advancedOptionsContainer.style.display = this.plugin.settings.AdnvOpend ? "block" : "none";
       toggleAdvancedButton.setText(this.plugin.settings.AdnvOpend ? "Hide advanced options" : "Show advanced options");
-      this.plugin.toggleModalStyles();
+      await this.plugin.toggleModalStyles();
       if(this.plugin.settings.AdnvOpend === false) {
         this.plugin.settings.opacity = 40;
         this.plugin.settings.zIndex = 5;
@@ -192,8 +192,8 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
             .setDynamicTooltip()
             .onChange(async (value) => {
               this.plugin.settings.modalStyle.blurRadius = value;
-              this.plugin.toggleModalStyles();
-              await this.plugin.saveSettings();
+              await this.plugin.toggleModalStyles();
+              this.plugin.debouncedSave();
             });
         });
 
@@ -208,8 +208,8 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
             .setDynamicTooltip()
             .onChange(async (value) => {
               this.plugin.settings.modalStyle.dimOpacity = value / 100;
-              this.plugin.toggleModalStyles();
-              await this.plugin.saveSettings();
+              await this.plugin.toggleModalStyles();
+              this.plugin.debouncedSave();
             });
         });
       new Setting(advancedOptionsContainer)
@@ -222,8 +222,8 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
             .onClick(async () => {
               const defaults = DEFAULT_SETTINGS;
               this.plugin.settings.modalStyle = { ...defaults.modalStyle };
-              this.plugin.toggleModalStyles();
-              await this.plugin.saveSettings();
+              await this.plugin.toggleModalStyles();
+              this.plugin.debouncedSave();
               this.display();
             })
         );

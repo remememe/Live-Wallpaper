@@ -37,6 +37,7 @@
 
 #live-wallpaper-container {
   transition: opacity 0.3s ease, filter 0.3s ease;
+  pointer-events: none;
 }
 
 video#live-wallpaper-media {

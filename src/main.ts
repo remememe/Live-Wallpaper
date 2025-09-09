@@ -230,7 +230,6 @@ export default class LiveWallpaperPlugin extends Plugin {
     return ['image', 'video', 'gif'].includes(t);
   }
   public async applyWallpaper(anyOptionEnabled: boolean) {
-    console.log("asdads");
     let newPath: string | null = null;
     let newType: 'image' | 'video' | 'gif' = this.settings.wallpaperType;
     if (anyOptionEnabled) {

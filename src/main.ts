@@ -23,9 +23,10 @@ interface ModalStyleSettings {
   effect: ModalEffect;   
   blurRadius: number;    
   dimOpacity: number;    
+  dimColor: "black" | "white";
+  disableModalBg: boolean;
 }
 interface TextArenaEntry {
-  target: string;
   attribute: string;
 }
 interface HistoryEntry {
@@ -78,9 +79,11 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
     effect: 'blur+dim',
     blurRadius: 10,
     dimOpacity: 0.7,
+    dimColor: "black",
+    disableModalBg: false
   },
   TextArenas: [
-      { target: "", attribute: "" }
+      { attribute: "" }
     ],
   Color: "#000000",
   Position: "Center",
@@ -647,52 +650,55 @@ export default class LiveWallpaperPlugin extends Plugin {
   }
 
   public async LoadOrUnloadChanges(load: boolean): Promise<void> {
-      for (const { target, attribute } of this.settings.TextArenas) {
-          try {
-              const attr = attribute?.trim();
-              if (!attr) continue;
+    const el = document.body.classList.contains("theme-dark") || document.body.classList.contains("theme-light") ? document.body : document.documentElement;
+    if(!el) return;
+    for (const { attribute } of this.settings.TextArenas) 
+    {
+      try 
+      {
+        const attr = attribute?.trim();
+        if (!attr) continue;
 
-              const isVar = attr.startsWith("--");
-              
-              if (isVar) {
-                  const el = document.body.classList.contains("theme-dark") 
-                      ? document.body 
-                      : document.documentElement;
-                  
-                  if (load) {
-                      el.style.setProperty(attr, "transparent", "important");
-                  } else {
-                      el.style.removeProperty(attr);
-                  }
-                  continue;
-              }
-
-              const targetSelector = target?.trim();
-              if (!targetSelector) continue; 
-
-              const el = document.querySelector<HTMLElement>(targetSelector);
-              if (!el) continue;
-
-              if (load) {
-                  el.style.setProperty(attr, "transparent", "important");
-              } else {
-                  el.style.removeProperty(attr);
-                  if (!el.getAttribute("style")) {
-                      el.removeAttribute("style");
-                  }
-              }
-          } catch (error) {
-              console.error("Error processing element:", { target, attribute }, error);
+        const isVar = attr.startsWith("--");
+        
+        if (isVar) {
+          if (load) {
+            el.style.setProperty(attr, "transparent", "important");
+          } 
+          else {
+            el.style.removeProperty(attr);
           }
+          continue;
+        }
+        if (load) {
+          el.style.setProperty(attr, "transparent", "important");
+        } 
+        else {
+          el.style.removeProperty(attr);
+          if (!el.getAttribute("style")) {
+            el.removeAttribute("style");
+          }
+        }
+      } 
+      catch (error) {
+        console.error("Error processing element:", { attribute }, error);
       }
+    }
   }
   public ApplyChanges(id: number): void {
-    const { target, attribute } = this.settings.TextArenas[id];
+    const { attribute } = this.settings.TextArenas[id];
     const attr = attribute.trim();
     const isVar = attr.startsWith("--");
-    const el = isVar
-      ? (document.body.classList.contains("theme-dark") ? document.body : document.documentElement)
-      : document.querySelector<HTMLElement>(target);
+    let el: HTMLElement | null = null;
+
+    if (isVar) {
+      el = document.body.classList.contains("theme-dark") || document.body.classList.contains("theme-light")
+        ? document.body
+        : document.documentElement;
+    } 
+    else {
+      el = document.body; 
+    }
     if (!el) return;
     el.style.setProperty(attr, "transparent", "important");
   }
@@ -700,32 +706,21 @@ export default class LiveWallpaperPlugin extends Plugin {
     if (id < 0 || id >= this.settings.TextArenas.length) return;
 
     const attribute = (oldAttribute ?? this.settings.TextArenas[id].attribute)?.trim();
-    const target = this.settings.TextArenas[id].target?.trim();
-
-    if (!attribute) return;
+    const el = document.body.classList.contains("theme-dark") || document.body.classList.contains("theme-light")
+      ? document.body
+      : document.documentElement;
+    if (!attribute || !el) return;
 
     try {
-      if (!attribute.startsWith("--")) {
-        if (!target) return; 
-        const el = document.querySelector<HTMLElement>(target);
-        if (el && el.style.getPropertyValue(attribute)) {
-          el.style.removeProperty(attribute);
-        }
-      } else {
-        const el = document.body.classList.contains("theme-dark")
-          ? document.body
-          : document.documentElement;
-        el.style.removeProperty(attribute);
-        el.style.setProperty(attribute, "");
+      el.style.removeProperty(attribute);
+      if (!el.getAttribute("style")) {
         el.removeAttribute("style");
       }
-    } catch (error) {
+    } 
+    catch (error) {
       console.error(`Error removing '${attribute}' at index ${id}:`, error);
     }
-
-    this.LoadOrUnloadChanges(true);
   }
-
   public async toggleModalStyles() {
     const styleId = "extrastyles-dynamic-css";
     let style = document.getElementById(styleId) as HTMLStyleElement;
@@ -737,16 +732,23 @@ export default class LiveWallpaperPlugin extends Plugin {
         document.head.appendChild(style);
       }
 
-      const { effect, blurRadius, dimOpacity } = this.settings.modalStyle;
+      const { effect, blurRadius, dimOpacity, dimColor, disableModalBg } = this.settings.modalStyle;
 
       let background = "transparent";
       let backdrop = "none";
+      let extraCss = "";
 
       if (effect.includes("dim")) {
-        background = `rgba(0, 0, 0, ${dimOpacity})`;
+        const color = dimColor === "white" ? "255, 255, 255" : "0, 0, 0";
+        background = `rgba(${color}, ${dimOpacity})`;
       }
+
       if (effect.includes("blur")) {
         backdrop = `blur(${blurRadius}px)`;
+      }
+
+      if (disableModalBg) {
+        extraCss += `.modal-bg { opacity: 0 !important; }`;
       }
 
       style.textContent = `
@@ -755,6 +757,7 @@ export default class LiveWallpaperPlugin extends Plugin {
           background: ${background};
           backdrop-filter: ${backdrop};
         }
+        ${extraCss}
       `;
     } else {
       style?.remove();

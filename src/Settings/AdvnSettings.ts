@@ -60,12 +60,12 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
       "This allows the wallpaper to appear behind the interface, improving readability and aesthetic. " +
       "Each row lets you specify a target element (CSS selector) and the attribute you want to override.<br><br>" +
       "Example targets and attributes you can modify:<br>" +
-      "• target: <code>.theme-dark</code>, attribute: <code>--background-primary</code><br>" +
-      "• target: <code>.theme-dark</code>, attribute: <code>--background-secondary</code><br>" +
-      "• target: <code>.theme-dark</code>, attribute: <code>--background-secondary-alt</code><br>" +
-      "• target: <code>.theme-dark</code>, attribute: <code>--col-pr-background</code><br>" +
-      "• target: <code>.theme-dark</code>, attribute: <code>--col-bckg-mainpanels</code><br>" +
-      "• target: <code>.theme-dark</code>, attribute: <code>--col-txt-titlebars</code><br><br>" +
+      "• attribute: <code>--background-primary</code><br>" +
+      "• attribute: <code>--background-secondary</code><br>" +
+      "• attribute: <code>--background-secondary-alt</code><br>" +
+      "• attribute: <code>--col-pr-background</code><br>" +
+      "• attribute: <code>--col-bckg-mainpanels</code><br>" +
+      "• attribute: <code>--col-txt-titlebars</code><br><br>" +
       "You can inspect elements and variables using browser dev tools (CTRL + SHIFT + I) to discover more attributes to adjust.";
 
     const tableContainer = advancedOptionsContainer.createEl("div", {
@@ -75,33 +75,18 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
 
     const thead = table.createEl("thead");
     const headerRow = thead.createEl("tr");
-    headerRow.createEl("th", { text: "Target element (CSS selector)" });
     headerRow.createEl("th", { text: "Attribute to modify" });
 
-    const tbody = table.createEl("tbody");
-
     this.plugin.settings.TextArenas.forEach((entry, index) => {
-      const row = tbody.createEl("tr");
-
-      const targetCell = row.createEl("td");
-      new Setting(targetCell).addText((text) => {
-        text.setValue(entry.target).onChange((value) => {
-          if(!SettingsUtils.TargetValid(value)) {
-            return;
-          }
-          this.plugin.settings.TextArenas[index].target = value;
-          this.plugin.saveSettings();
-        });
-      });
-
-      const attrCell = row.createEl("td");
-      new Setting(attrCell).addText((text) => {
+      const row = table.createEl("tr");
+      new Setting(row).addText((text) => {
         text.setValue(entry.attribute).onChange((value) => {
           if (!SettingsUtils.AttributeValid(value)) {
             return; 
           }
           this.plugin.RemoveChanges(index);
           this.plugin.settings.TextArenas[index].attribute = value;
+          this.plugin.LoadOrUnloadChanges(true);
           this.plugin.saveSettings();
           this.plugin.ApplyChanges(index);
         });
@@ -115,6 +100,7 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
           .onClick(() => {
             this.plugin.RemoveChanges(index);
             this.plugin.settings.TextArenas.splice(index, 1);
+            this.plugin.LoadOrUnloadChanges(true);
             this.plugin.saveSettings();
             this.display();
           });
@@ -127,7 +113,7 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
         .setClass("text-arena-center-button")
         .setTooltip("Add a new row to the table")
         .onClick(() => {
-          this.plugin.settings.TextArenas.push({ target: "", attribute: "" });
+          this.plugin.settings.TextArenas.push({attribute: ""});
           this.display();
         })
     );
@@ -208,6 +194,32 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
             .setDynamicTooltip()
             .onChange(async (value) => {
               this.plugin.settings.modalStyle.dimOpacity = value / 100;
+              await this.plugin.toggleModalStyles();
+              this.plugin.debouncedSave();
+            });
+        });
+      new Setting(advancedOptionsContainer)
+        .setName("Modal dim color")
+        .setDesc("Choose whether the modal background dim is black or white")
+        .addDropdown(dropdown => {
+          dropdown
+            .addOption("black", "Black")
+            .addOption("white", "White")
+            .setValue(this.plugin.settings.modalStyle.dimColor)
+            .onChange(async (value) => {
+              this.plugin.settings.modalStyle.dimColor = value as "black" | "white";
+              await this.plugin.toggleModalStyles();
+              this.plugin.debouncedSave();
+            });
+        });
+      new Setting(advancedOptionsContainer)
+        .setName("Disable modal background")
+        .setDesc("Turns off the default modal background dim")
+        .addToggle(toggle => {
+          toggle
+            .setValue(this.plugin.settings.modalStyle.disableModalBg)
+            .onChange(async (value) => {
+              this.plugin.settings.modalStyle.disableModalBg = value;
               await this.plugin.toggleModalStyles();
               this.plugin.debouncedSave();
             });

@@ -1,7 +1,8 @@
-import { App, PluginSettingTab, Setting, Platform, Notice} from "obsidian";
+import { App, PluginSettingTab, Setting, Platform, Notice, DropdownComponent} from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
 import SettingsUtils from "./SettingsUtils";
 import Scheduler from "../Scheduler";
+import WallpaperConfigUtils from "../WallpaperConfigUtils";
 const positions = new Map<number, string>([
   [100, 'Right'],
   [0, 'Left'],
@@ -17,78 +18,93 @@ export class SettingsApp extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    const anyOptionEnabled = Scheduler.Check(this.plugin.settings.scheduledWallpapers.options);
     const setting = new Setting(containerEl)
       .setName("Wallpaper source")
       .setDesc("Select an image, GIF, or video file to use as your wallpaper");
-
-    if (!anyOptionEnabled) {
-      setting.addButton(async (btn) => {
-        const pathExists = await SettingsUtils.getPathExists(
-          this.plugin,
-          this.plugin.settings.wallpaperPath
-        );
-
-        if (pathExists) {
-          btn
-            .setIcon('circle-check')
-            .setTooltip('Wallpaper path exists');
-        } else {
-          btn
-            .setIcon('circle-x')
-            .setTooltip('Wallpaper path is missing');
-        }
-      });
-      setting.addButton((btn) =>
-        btn
-          .setButtonText("History")
-          .setIcon("history")
-          .setClass("mod-cta")
-          .onClick(async () => {
-            containerEl.empty();
-            await this.plugin.cleanInvalidWallpaperHistory();
-            this.plugin.settings.HistoryPaths.forEach((entry) => {
-              new Setting(containerEl)
-                .setName(entry.fileName)
-                .setDesc(entry.path)
-                .addButton((button) => {
-                  button.setButtonText("Select").onClick(async () => {
-                    const pluginId = this.plugin.manifest.id;
-                    const baseDir = `${this.app.vault.configDir}/plugins/${pluginId}/wallpapers`;
-                    const sourceFullPath = `${this.app.vault.configDir}/${entry.path}`;
-                    const targetFullPath = `${baseDir}/active/normal/${entry.fileName}`;
-
-                    const exists = await this.app.vault.adapter.exists(targetFullPath);
-                    if (!exists) {
-                      try {
-                        await this.app.vault.adapter.copy(sourceFullPath, targetFullPath);
-                      } catch (e) {
-                        console.error("Failed to copy wallpaper from history to active/normal", e);
-                        return;
-                      }
-                    }
-                    const relativeTargetFullPath = targetFullPath.replace(`${this.app.vault.configDir}/`, '');
-                    const folder = relativeTargetFullPath.substring(0, relativeTargetFullPath.lastIndexOf('/'));
-                    await this.plugin.removeAllExcept(folder, relativeTargetFullPath);
-                    this.plugin.settings.wallpaperPath = `plugins/${pluginId}/wallpapers/active/normal/${entry.fileName}`;
-                    this.plugin.settings.wallpaperType = entry.type;
-
-                    this.plugin.applyWallpaper(false);
-                    this.display();
-                  });
-                });
-            });
-          })
+    setting.addButton(async (btn) => {
+      const pathExists = await SettingsUtils.getPathExists(
+        this.plugin,
+        this.plugin.settings.currentWallpaper.path
       );
-    }
 
+      if (pathExists) {
+        btn
+          .setIcon('circle-check')
+          .setTooltip('Wallpaper path exists');
+      } else {
+        btn
+          .setIcon('circle-x')
+          .setTooltip('Wallpaper path is missing');
+      }
+    });
+    setting.addButton((btn) =>
+      btn
+        .setButtonText("History")
+        .setIcon("history")
+        .setClass("mod-cta")
+        .onClick(async () => {
+          containerEl.empty();
+          await this.plugin.cleanInvalidWallpaperHistory();
+          this.plugin.settings.HistoryPaths.forEach((entry) => {
+            new Setting(containerEl)
+              .setName(entry.fileName)
+              .setDesc(entry.path)
+              .addButton((button) => {
+                button.setButtonText("Select").onClick(async () => {
+                  this.plugin.settings.currentWallpaper = await WallpaperConfigUtils.GetCurrentConfig(this.plugin);
+                  const Index = this.plugin.settings.currentWallpaper.Index;
+                  const pluginId = this.plugin.manifest.id;
+                  const baseDir = `${this.app.vault.configDir}/plugins/${pluginId}/wallpapers`;
+
+                  const sourceFullPath = `${this.app.vault.configDir}/${entry.path}`;
+                  const ActiveSubFolder = WallpaperConfigUtils.computeActiveSubfolder(Index);
+
+                  const targetFullPath = `${baseDir}/active/${ActiveSubFolder}/${entry.fileName}`;
+
+                  const exists = await this.app.vault.adapter.exists(targetFullPath);
+                  if (!exists) {
+                    try {
+                      await this.app.vault.adapter.copy(sourceFullPath, targetFullPath);
+                    } catch (e) {
+                      console.error("Failed to copy wallpaper from history to active folder", e);
+                      return;
+                    }
+                  }
+
+                  const relativeTargetFullPath = targetFullPath.replace(`${this.app.vault.configDir}/`, '');
+                  const folder = relativeTargetFullPath.substring(0, relativeTargetFullPath.lastIndexOf('/'));
+
+                  if (ActiveSubFolder === "normal") {
+                    await this.plugin.removeAllExcept(folder, relativeTargetFullPath);
+                  } else {
+                    const Path = `plugins/${pluginId}/wallpapers/active/${ActiveSubFolder}/${entry.fileName}`;
+                    await this.plugin.removeFileIfUnused(
+                      Path,
+                      this.plugin.settings.WallpaperConfigs[Index].path,
+                      WallpaperConfigUtils.getPaths(Index, this.plugin.settings.WallpaperConfigs)
+                    );
+                  }
+
+                  this.plugin.settings.currentWallpaper.path = `plugins/${pluginId}/wallpapers/active/${ActiveSubFolder}/${entry.fileName}`;
+                  this.plugin.settings.currentWallpaper.type = entry.type;
+                  this.plugin.settings.WallpaperConfigs[Index].path = `plugins/${pluginId}/wallpapers/active/${ActiveSubFolder}/${entry.fileName}`;
+                  this.plugin.settings.WallpaperConfigs[Index].type = entry.type;
+
+                  await this.plugin.toggleModalStyles();
+                  this.plugin.applyWallpaper(true);
+                  await this.plugin.saveSettings();
+                  this.display();
+                });
+              });
+          });
+        })
+    );
     setting.addButton((btn) => {
       btn
         .setButtonText("Check wallpaper")
         .setIcon("image-file")
         .onClick(async () => {
-          const path = await SettingsUtils.getWallpaperPath(this.plugin,anyOptionEnabled);
-
+          const path = await SettingsUtils.getWallpaperPath(this.plugin,this.plugin.settings.currentWallpaper.Index);
           if (!path) {
             new Notice("No wallpaper path set.");
             return;
@@ -96,31 +112,109 @@ export class SettingsApp extends PluginSettingTab {
 
           if (await SettingsUtils.wallpaperExists(this.plugin, path)) {
             new Notice("Wallpaper loaded successfully.");
-          } else {
+          } 
+          else {
             new Notice("Wallpaper file not found. Resetting path.");
-            this.plugin.settings.wallpaperPath = "";
+            this.plugin.settings.currentWallpaper.path = "";
             await this.plugin.saveSettings();
           }
         });
     });
+    setting.addButton((btn) =>
+      btn
+        .setButtonText("Browse")
+        .setIcon("folder-open")
+        .setClass("mod-cta")
+        .onClick(async () => 
+        {
+          await this.plugin.openFilePicker(this.plugin.settings.currentWallpaper.Index);
+          await this.plugin.toggleModalStyles();
+        })
+    );
+    new Setting(containerEl)
+      .setName("Use global configuration")
+      .setDesc("When enabled, all wallpapers will use the global settings instead of individual configurations.")
+      .addToggle(toggle => { toggle
+        .setValue(this.plugin.settings.globalConfig.enabled)
+        .onChange(async (value) => {
+            const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+            this.plugin.settings.globalConfig.enabled = value;
+            this.plugin.settings.Preview = false;
+            this.plugin.settings.currentWallpaper = await WallpaperConfigUtils.GetCurrentConfig(this.plugin);
+            await this.plugin.toggleModalStyles();
+            this.plugin.applyMediaStyles(media);
+            this.plugin.applyWallpaper();
+            await this.plugin.saveSettings();
+            this.display();
+        });
+      });
+    if(!this.plugin.settings.globalConfig.enabled)
+    {
+      const Preview = new Setting(containerEl)
+        .setName("Wallpaper preview")
+        .setDesc("Preview and test specific wallpaper schedules below.");
 
-    if (!anyOptionEnabled) {
-      setting.addButton((btn) =>
-        btn
-          .setButtonText("Browse")
-          .setIcon("folder-open")
-          .setClass("mod-cta")
-          .onClick(() => this.plugin.openFilePicker())
-      );
+      Preview.addDropdown(dropdown => {
+        const MODAL_EFFECTS: Record<string, string> = {
+          "0": "No Schedule",
+          "1": "Day",
+          "2": "Night",
+          "3": "Monday",
+          "4": "Tuesday",
+          "5": "Wednesday",
+          "6": "Thursday",
+          "7": "Friday",
+          "8": "Saturday",
+          "9": "Sunday"
+        };
+
+        dropdown
+          .addOptions(MODAL_EFFECTS)
+          .setValue(this.plugin.settings.Preview ? this.plugin.settings.currentWallpaper.Index.toString() : "X") 
+          .onChange(async (value) => {
+            const index = parseInt(value, 10);
+            const targetConfig = this.plugin.settings.WallpaperConfigs[index];
+            if (targetConfig) {
+              this.plugin.settings.currentWallpaper = targetConfig;
+              this.plugin.settings.Preview = true;
+              await this.plugin.toggleModalStyles();
+              this.plugin.applyWallpaper();
+
+              new Notice(`Previewing wallpaper for ${MODAL_EFFECTS[value]}`);
+              
+              await this.plugin.saveSettings();
+              this.display();
+            }
+          });
+      });
+
+      Preview.addButton(button => {
+        button
+          .setButtonText("Turn off preview")
+          .setIcon("eye-off")
+          .onClick(async () => {
+            const currentConfig = await WallpaperConfigUtils.GetCurrentConfig(this.plugin);
+            if (currentConfig) {
+              this.plugin.settings.currentWallpaper = { ...currentConfig };
+              this.plugin.settings.Preview = false;
+              await this.plugin.toggleModalStyles();
+              this.plugin.applyWallpaper();
+              new Notice("Preview turned off restored scheduled wallpaper.");
+              
+              await this.plugin.saveSettings();
+              this.display();
+            }
+          });
+      });
     }
     new Setting(containerEl)
       .setName("Use full-resolution wallpapers")
       .setDesc("Keeps the original image size. To apply, add the wallpaper again.")
       .addToggle((Toggle) => {
         Toggle
-          .setValue(this.plugin.settings.Quality)
+          .setValue(this.plugin.settings.currentWallpaper.Quality)
           .onChange(async (value) => {
-            this.plugin.settings.Quality = value;
+            this.plugin.settings.currentWallpaper.Quality = value;
             await this.plugin.saveSettings();
           });
       });
@@ -140,38 +234,39 @@ export class SettingsApp extends PluginSettingTab {
       .setDesc("Toggle to adjust the wallpaper's position and scale.")
       .addToggle(Toggle => {
         Toggle
-          .setValue(this.plugin.settings.Reposition)
+          .setValue(this.plugin.settings.currentWallpaper.Reposition)
           .onChange(async (value) => {
             const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-            this.plugin.settings.Reposition = value;
+            this.plugin.settings.currentWallpaper.Reposition = value;
             await this.plugin.saveSettings();
-            this.display();
+
             if (value) {
               SettingsUtils.enableReposition(this.plugin);
-              SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
+              SettingsUtils.applyImagePosition(media,this.plugin.settings.currentWallpaper.positionX,this.plugin.settings.currentWallpaper.positionY,this.plugin.settings.currentWallpaper.Scale);
             } 
             else {
               SettingsUtils.disableReposition();
               this.plugin.applyMediaStyles(media);
             }
+            this.display();
         })
       })
-    if (this.plugin.settings.Reposition) {
+    if (this.plugin.settings.currentWallpaper.Reposition) {
       new Setting(containerEl)
         .setName('Horizontal position')
         .setDesc('Adjust the horizontal position of the wallpaper.')
         .addSlider(slider => {
           slider
             .setLimits(0, 100, 1) 
-            .setValue(this.plugin.settings.PositionX) 
+            .setValue(this.plugin.settings.currentWallpaper.positionX) 
             .setDynamicTooltip()
             .setInstant(true)
             .onChange(async (value) => {
               const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-              this.plugin.settings.PositionX = value;
+              this.plugin.settings.currentWallpaper.positionX = value;
               this.plugin.debouncedSave();
               if (media) {
-                SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
+                SettingsUtils.applyImagePosition(media,this.plugin.settings.currentWallpaper.positionX,this.plugin.settings.currentWallpaper.positionY,this.plugin.settings.currentWallpaper.Scale);
               }
             });
         });
@@ -182,15 +277,15 @@ export class SettingsApp extends PluginSettingTab {
         .addSlider(slider => {
           slider
             .setLimits(0, 100, 1)
-            .setValue(this.plugin.settings.PositionY)
+            .setValue(this.plugin.settings.currentWallpaper.positionY)
             .setDynamicTooltip()
             .setInstant(true)
             .onChange(async (value) => {
               const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-              this.plugin.settings.PositionY = value;
+              this.plugin.settings.currentWallpaper.positionY = value;
               this.plugin.debouncedSave();
               if (media) {
-                SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
+                SettingsUtils.applyImagePosition(media,this.plugin.settings.currentWallpaper.positionX,this.plugin.settings.currentWallpaper.positionY,this.plugin.settings.currentWallpaper.Scale);
               }
             });
         });
@@ -200,15 +295,15 @@ export class SettingsApp extends PluginSettingTab {
         .addSlider(slider => {
           slider
             .setLimits(0.5,2,0.1)
-            .setValue(this.plugin.settings.Scale ?? 1)
+            .setValue(this.plugin.settings.currentWallpaper.Scale ?? 1)
             .setDynamicTooltip()
             .setInstant(true)
             .onChange(async (value) => {
               const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-              this.plugin.settings.Scale = value;
+              this.plugin.settings.currentWallpaper.Scale = value;
               this.plugin.debouncedSave();
               if (media) {
-                SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
+                SettingsUtils.applyImagePosition(media,this.plugin.settings.currentWallpaper.positionX,this.plugin.settings.currentWallpaper.positionY,this.plugin.settings.currentWallpaper.Scale);
               }
             });
         })
@@ -220,14 +315,14 @@ export class SettingsApp extends PluginSettingTab {
             dropdown.addOption(key.toString(), label);
           });
           dropdown
-            .setValue(this.plugin.settings.Position)
+            .setValue(this.plugin.settings.currentWallpaper.position)
             .onChange(async (value) => {
               const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-              this.plugin.settings.Position = value;
+              this.plugin.settings.currentWallpaper.position = value;
               this.plugin.debouncedSave();
               if (media) {
-                this.plugin.settings.PositionX = Number.parseInt(value);
-                SettingsUtils.applyImagePosition(media,this.plugin.settings.PositionX,this.plugin.settings.PositionY,this.plugin.settings.Scale);
+                this.plugin.settings.currentWallpaper.positionX = Number.parseInt(value);
+                SettingsUtils.applyImagePosition(media,this.plugin.settings.currentWallpaper.positionX,this.plugin.settings.currentWallpaper.positionY,this.plugin.settings.currentWallpaper.Scale);
                 this.display();
               }
             });
@@ -239,14 +334,14 @@ export class SettingsApp extends PluginSettingTab {
         .setDesc('Toggle this option to turn off object-fit: cover for the image.')
         .addToggle(toggle => {
           toggle
-            .setValue(this.plugin.settings.useObjectFit)
+            .setValue(this.plugin.settings.currentWallpaper.useObjectFit)
             .onChange(async (value) => {
               const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
-              this.plugin.settings.useObjectFit = value;
+              this.plugin.settings.currentWallpaper.useObjectFit = value;
               this.plugin.debouncedSave();
               if (media) {
                 Object.assign(media.style, {
-                  objectFit: this.plugin.settings.useObjectFit ? 'unset' : 'cover'
+                  objectFit: this.plugin.settings.currentWallpaper.useObjectFit ? 'unset' : 'cover'
                 });
               }
             });
@@ -259,13 +354,13 @@ export class SettingsApp extends PluginSettingTab {
       )
       .addSlider((slider) => {
         const valueEl = containerEl.createEl("span", {
-          text: ` ${this.plugin.settings.opacity}%`,
+          text: ` ${this.plugin.settings.currentWallpaper.opacity}%`,
           cls: "setting-item-description",
         });
 
         const initialValue = this.plugin.settings.AdnvOpend
           ? 100
-          : this.plugin.settings.opacity;
+          : this.plugin.settings.currentWallpaper.opacity;
 
         if (this.plugin.settings.AdnvOpend) {
           slider.setDisabled(true);
@@ -280,9 +375,9 @@ export class SettingsApp extends PluginSettingTab {
           .setInstant(true)
           .onChange(async (v) => {
             if (!this.plugin.settings.AdnvOpend) {
-              this.plugin.settings.opacity = v;
+              this.plugin.settings.currentWallpaper.opacity = v;
               valueEl.textContent = ` ${v}%`;
-              this.plugin.debouncedApplyWallpaper(anyOptionEnabled);
+              this.plugin.debouncedApplyWallpaper();
               this.plugin.debouncedSave();
             }
           });
@@ -293,17 +388,17 @@ export class SettingsApp extends PluginSettingTab {
       .setDesc("Applies a blur effect to the wallpaper in pixels")
       .addSlider((slider) => {
         const valueEl = containerEl.createEl("span", {
-          text: ` ${this.plugin.settings.blurRadius}px`,
+          text: ` ${this.plugin.settings.currentWallpaper.blurRadius}px`,
           cls: "setting-item-description",
         });
         slider
           .setInstant(true)
           .setLimits(0, 20, 1)
-          .setValue(this.plugin.settings.blurRadius)
+          .setValue(this.plugin.settings.currentWallpaper.blurRadius)
           .onChange(async (v) => {
-            this.plugin.settings.blurRadius = v;
+            this.plugin.settings.currentWallpaper.blurRadius = v;
             valueEl.textContent = ` ${v}px`;
-            this.plugin.debouncedApplyWallpaper(anyOptionEnabled);
+            this.plugin.debouncedApplyWallpaper();
             this.plugin.debouncedSave();
           });
       });
@@ -313,21 +408,39 @@ export class SettingsApp extends PluginSettingTab {
       .setDesc("Adjusts the wallpaper brightness (100% = normal)")
       .addSlider((slider) => {
         const valueEl = containerEl.createEl("span", {
-          text: ` ${this.plugin.settings.brightness}%`,
+          text: ` ${this.plugin.settings.currentWallpaper.brightness}%`,
           cls: "setting-item-description",
         });
         slider
           .setInstant(true)
           .setLimits(20, 130, 1)
-          .setValue(this.plugin.settings.brightness)
+          .setValue(this.plugin.settings.currentWallpaper.brightness)
           .onChange(async (v) => {
-            this.plugin.settings.brightness = v;
+            this.plugin.settings.currentWallpaper.brightness = v;
             valueEl.textContent = ` ${v}%`;
-            this.plugin.debouncedApplyWallpaper(anyOptionEnabled);
+            this.plugin.debouncedApplyWallpaper();
             this.plugin.debouncedSave();
           });
       });
-
+    new Setting(containerEl)
+      .setName("Contrast")
+      .setDesc("Controls the wallpaper contrast intensity 100% represents the original image")
+      .addSlider((slider) => {
+        const valueEl = containerEl.createEl("span", {
+          text: ` ${this.plugin.settings.currentWallpaper.contrast}%`,
+          cls: "setting-item-description",
+        });
+        slider
+          .setInstant(true)
+          .setLimits(0, 200, 1)
+          .setValue(this.plugin.settings.currentWallpaper.contrast)
+          .onChange(async (v) => {
+            this.plugin.settings.currentWallpaper.contrast = v;
+            valueEl.textContent = ` ${v}%`;
+            this.plugin.debouncedApplyWallpaper();
+            this.plugin.debouncedSave();
+          });
+      });
     new Setting(containerEl)
       .setName("Layer position (z‑index)")
       .setDesc(
@@ -335,34 +448,23 @@ export class SettingsApp extends PluginSettingTab {
       )
       .addSlider((slider) => {
         const valueEl = containerEl.createEl("span", {
-          text: ` ${this.plugin.settings.zIndex}`,
+          text: ` ${this.plugin.settings.currentWallpaper.zIndex}`,
           cls: "setting-item-description",
         });
-        if (this.plugin.settings.AdnvOpend) {
-          this.plugin.settings.zIndex = 0;
-          valueEl.textContent = ` 0`;
-        }
         slider
           .setInstant(true)
           .setLimits(-10, 100, 1)
-          .setValue(this.plugin.settings.zIndex)
+          .setValue(this.plugin.settings.currentWallpaper.zIndex)
           .setDisabled(this.plugin.settings.AdnvOpend)
           .onChange(async (v) => {
             if (!this.plugin.settings.AdnvOpend) {
-              this.plugin.settings.zIndex = v;
+              this.plugin.settings.currentWallpaper.zIndex = v;
               valueEl.textContent = ` ${v}`;
-              this.plugin.debouncedApplyWallpaper(anyOptionEnabled);
+              this.plugin.debouncedApplyWallpaper();
               this.plugin.debouncedSave();
             }
           });
       });
-    if (this.plugin.settings.AdnvOpend) {
-      this.plugin.settings.opacity = 100;
-      this.plugin.settings.zIndex = 0;
-      this.plugin.saveSettings().then(() => {
-        this.plugin.applyWallpaper(anyOptionEnabled);
-      });
-    }
     new Setting(containerEl)
       .setName("Change playback speed")
       .setDesc(
@@ -370,16 +472,16 @@ export class SettingsApp extends PluginSettingTab {
       )
       .addSlider((slider) => {
         const valueEl = containerEl.createSpan({
-          text: `${this.plugin.settings.playbackSpeed.toFixed(2)}x`,
+          text: `${this.plugin.settings.currentWallpaper.playbackSpeed.toFixed(2)}x`,
           cls: "setting-item-description",
         });
         slider
           .setInstant(true)
           .setLimits(0.25, 2, 0.25)
-          .setValue(this.plugin.settings.playbackSpeed)
+          .setValue(this.plugin.settings.currentWallpaper.playbackSpeed)
           .onChange(async (val) => {
-            this.plugin.settings.playbackSpeed = val;
-            this.plugin.debouncedApplyWallpaper(false);
+            this.plugin.settings.currentWallpaper.playbackSpeed = val;
+            this.plugin.debouncedApplyWallpaper();
             this.plugin.debouncedSave();
             valueEl.setText(`${val.toFixed(2)}x`);
           });
@@ -445,20 +547,21 @@ export class SettingsApp extends PluginSettingTab {
       .addButton((Button) =>
         Button.setButtonText("Reset").onClick(async () => {
           const defaults = DEFAULT_SETTINGS;
-          this.plugin.settings.wallpaperPath = defaults.wallpaperPath;
-          this.plugin.settings.wallpaperType = defaults.wallpaperType;
+          this.plugin.settings.currentWallpaper.path = defaults.currentWallpaper.path;
+          this.plugin.settings.currentWallpaper.type = defaults.currentWallpaper.type;
           this.plugin.settings.HistoryPaths = defaults.HistoryPaths;
-          this.plugin.settings.playbackSpeed = defaults.playbackSpeed;
-          this.plugin.settings.opacity = defaults.opacity;
-          this.plugin.settings.zIndex = defaults.zIndex;
-          this.plugin.settings.blurRadius = defaults.blurRadius;
-          this.plugin.settings.brightness = defaults.brightness;
+          this.plugin.settings.currentWallpaper.playbackSpeed = defaults.currentWallpaper.playbackSpeed;
+          this.plugin.settings.currentWallpaper.opacity = defaults.currentWallpaper.opacity;
+          this.plugin.settings.currentWallpaper.zIndex = defaults.currentWallpaper.zIndex;
+          this.plugin.settings.currentWallpaper.blurRadius = defaults.currentWallpaper.blurRadius;
+          this.plugin.settings.currentWallpaper.brightness = defaults.currentWallpaper.brightness;
+          this.plugin.settings.currentWallpaper.contrast = defaults.currentWallpaper.contrast;
           this.plugin.settings.mobileBackgroundHeight =
             defaults.mobileBackgroundHeight;
           this.plugin.settings.mobileBackgroundWidth =
             defaults.mobileBackgroundWidth;
           await this.plugin.saveSettings();
-          this.plugin.applyWallpaper(anyOptionEnabled);
+          this.plugin.applyWallpaper();
           this.display();
         })
       );

@@ -63,10 +63,12 @@ export class LiveWallpaperSettingManager extends PluginSettingTab {
     if (this.activeTab === "regular") {
       this.regularTab.containerEl = contentContainer;
       this.regularTab.display();
-    } else if (this.activeTab === "advanced") {
+    } 
+    else if (this.activeTab === "advanced") {
       this.advancedTab.containerEl = contentContainer;
       this.advancedTab.display();
-    } else {
+    } 
+    else {
       this.scheduledTab.containerEl = contentContainer;
       this.scheduledTab.display();
     }

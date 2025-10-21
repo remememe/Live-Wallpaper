@@ -21,44 +21,16 @@ export default class SettingsUtils {
 			return false;
 		}
 	}
-	static async getWallpaperPath(
-		plugin: LiveWallpaperPlugin,
-		anyOptionEnabled: boolean,
-	): Promise<string> {
+	static async getWallpaperPath(plugin: LiveWallpaperPlugin,Index: number): Promise<string> {
 		const settings = plugin.settings;
+		const baseDir = plugin.app.vault.configDir;
 		let path = "";
-		if (!anyOptionEnabled) {
-			path = `${plugin.app.vault.configDir}/${settings.wallpaperPath}`;
-		} else {
-			const isWeek = settings.scheduledWallpapers.options.weekly;
-			const paths = isWeek
-				? settings.scheduledWallpapers.wallpaperWeekPaths
-				: settings.scheduledWallpapers.wallpaperDayPaths;
-
-			const index = Scheduler.applyScheduledWallpaper(
-				paths,
-				settings.scheduledWallpapers.options,
-			);
-
-			if (index !== null) {
-				const selectedPath = paths[index];
-				path = `${plugin.app.vault.configDir}/${selectedPath}`;
-				settings.wallpaperPath = selectedPath;
-				await plugin.saveSettings();
-			} else {
-				new Notice("No wallpaper path set.");
-				settings.wallpaperPath = "";
-				await plugin.saveSettings();
-				return "";
-			}
-		}
-
+		const config = settings.WallpaperConfigs[Index];
+		path = `${baseDir}/${config.path}`;
 		return path;
 	}
-	static async getPathExists(
-		plugin: LiveWallpaperPlugin,
-		relativePath: string,
-	): Promise<boolean> {
+
+	static async getPathExists(plugin: LiveWallpaperPlugin,relativePath: string): Promise<boolean> {
 		if (!relativePath || relativePath.trim() === "") {
 			return false;
 		}
@@ -67,10 +39,7 @@ export default class SettingsUtils {
 		return await this.wallpaperExists(plugin, fullPath);
 	}
 
-	static async wallpaperExists(
-		plugin: LiveWallpaperPlugin,
-		path: string,
-	): Promise<boolean> {
+	static async wallpaperExists(plugin: LiveWallpaperPlugin,path: string): Promise<boolean> {
 		return await plugin.app.vault.adapter.exists(path);
 	}
 	static async applyImagePosition(
@@ -123,15 +92,15 @@ export default class SettingsUtils {
 				| HTMLImageElement
 				| HTMLVideoElement;
 			if (!media) return;
-			if (!plugin.settings.Reposition) {
+			if (!plugin.settings.currentWallpaper.Reposition) {
 				plugin.applyMediaStyles(media);
 				return;
 			}
 			this.applyImagePosition(
 				media,
-				plugin.settings.PositionX ?? 50,
-				plugin.settings.PositionY ?? 50,
-				plugin.settings.Scale ?? 1,
+				plugin.settings.currentWallpaper.positionX ?? 50,
+				plugin.settings.currentWallpaper.positionY ?? 50,
+				plugin.settings.currentWallpaper.Scale ?? 1,
 			);
 		};
 		window.addEventListener("resize", this.resizeHandler);
@@ -148,8 +117,8 @@ export default class SettingsUtils {
 		}, 300);
 	}
 	static ApplyWallpaperDebounced(plugin: LiveWallpaperPlugin) {
-		return debounce(async (anyOptionEnabled: boolean) => {
-			await plugin.applyWallpaper(anyOptionEnabled);
+		return debounce(async (skipConfigReload: boolean = false) => {
+			await plugin.applyWallpaper(skipConfigReload);
 		}, 300);
 	}
 }

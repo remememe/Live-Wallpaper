@@ -15,7 +15,6 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     const advancedSection = containerEl.createDiv();
-    const anyOptionEnabled = Scheduler.Check(this.plugin.settings.scheduledWallpapers.options);
     new Setting(advancedSection).setName("Experimental options").setHeading();
 
     new Setting(advancedSection).setName(
@@ -38,15 +37,7 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
       advancedOptionsContainer.style.display = this.plugin.settings.AdnvOpend ? "block" : "none";
       toggleAdvancedButton.setText(this.plugin.settings.AdnvOpend ? "Hide advanced options" : "Show advanced options");
       await this.plugin.toggleModalStyles();
-      if(this.plugin.settings.AdnvOpend === false) {
-        this.plugin.settings.opacity = 40;
-        this.plugin.settings.zIndex = 5;
-      } 
-      else {
-        this.plugin.settings.opacity = 100; 
-        this.plugin.settings.zIndex = 0;    
-      }
-      this.plugin.applyWallpaper(anyOptionEnabled);
+      this.plugin.applyWallpaper();
       this.plugin.saveSettings();
       this.display();
     };
@@ -239,6 +230,6 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
               this.display();
             })
         );
-    }
+    };
   }
 }

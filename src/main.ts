@@ -94,7 +94,7 @@ interface LiveWallpaperPluginSettings {
   migrated?: boolean; 
 }
 export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
-  LatestVersion: '1.5.0',
+  LatestVersion: '1.5.2',
 
   currentWallpaper: defaultWallpaper,
   globalConfig: {
@@ -147,9 +147,9 @@ export default class LiveWallpaperPlugin extends Plugin {
   {
     await this.loadSettings();
     await this.ensureWallpaperFolderExists();
-    if (this.settings.LatestVersion != '1.5.1') {
+    if (this.isVersionLess(this.settings.LatestVersion, '1.5.1')) {
       await this.migrateOldSettings();
-      this.settings.LatestVersion = '1.5.1';
+      this.settings.LatestVersion = '1.5.2';
       await this.saveSettings();
     }
     
@@ -169,12 +169,9 @@ export default class LiveWallpaperPlugin extends Plugin {
     if(anyOptionEnabled)
     {
       this.startDayNightWatcher();
-      this.applyWallpaper(true);
     }
-    else
-    {
-      this.applyWallpaper(false);
-    }
+    this.applyWallpaper(false);
+  
     this.registerEvent(
       this.app.workspace.on("css-change", () => {
         const el = document.getElementById("live-wallpaper-container");
@@ -223,6 +220,16 @@ export default class LiveWallpaperPlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+  private isVersionLess(current:string, target:string) {
+    const c = current.split('.').map(Number);
+    const t = target.split('.').map(Number);
+
+    for (let i = 0; i < t.length; i++) {
+      if ((c[i] || 0) < t[i]) return true;
+      if ((c[i] || 0) > t[i]) return false;
+    }
+    return false;
   }
   private async migrateOldSettings() {
     const settings = this.settings as any;
@@ -590,7 +597,7 @@ export default class LiveWallpaperPlugin extends Plugin {
       else
       {
         Object.assign(container.style, {
-          opacity: `${this.settings.currentWallpaper.opacity/100,0.80}`,
+          opacity: `${Math.min(this.settings.currentWallpaper.opacity / 100, 0.8)}`,
           zIndex: `${this.settings.currentWallpaper.zIndex}`
         });
       }

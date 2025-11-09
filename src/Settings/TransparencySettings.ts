@@ -1,10 +1,9 @@
-import { PluginSettingTab, App, Setting,Platform } from "obsidian";
+import { PluginSettingTab, App, Setting, Platform } from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
 import type { ModalEffect } from "../main";
-import Scheduler from "../Scheduler";
 import SettingsUtils from "./SettingsUtils";
 
-export class LiveWallpaperSettingTab extends PluginSettingTab {
+export class TransparencySettingsTab extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
   constructor(app: App, plugin: LiveWallpaperPlugin) {
     super(app, plugin);
@@ -14,43 +13,44 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    const advancedSection = containerEl.createDiv();
-    new Setting(advancedSection).setName("Experimental options").setHeading();
+    const transparencySection = containerEl.createDiv();
 
-    new Setting(advancedSection).setName(
-      "fine-tune advanced transparency settings to seamlessly integrate your wallpaper. these experimental features allow for deeper customization but may require css knowledge."
+    new Setting(transparencySection)
+      .setName("Transparency options")
+      .setHeading();
+
+    new Setting(transparencySection).setName(
+      "Fine-tune transparency and visual effects to seamlessly integrate your wallpaper. These features allow for deeper customization but may require CSS knowledge."
     );
 
-    const toggleAdvancedButton = advancedSection.createEl("button", {
+    const toggleTransparencyButton = transparencySection.createEl("button", {
       text: this.plugin.settings.AdnvOpend
-        ? "Disable experimental settings"
-        : "Enable experimental settings",
+        ? "Disable transparency settings"
+        : "Enable transparency settings",
     });
 
-    const advancedOptionsContainer = advancedSection.createDiv();
-    advancedOptionsContainer.style.display = this.plugin.settings.AdnvOpend
+    const transparencyOptionsContainer = transparencySection.createDiv();
+    transparencyOptionsContainer.style.display = this.plugin.settings.AdnvOpend
       ? "block"
       : "none";
 
-    toggleAdvancedButton.onclick = async () => {
+    toggleTransparencyButton.onclick = async () => {
       this.plugin.settings.AdnvOpend = !this.plugin.settings.AdnvOpend;
-      advancedOptionsContainer.style.display = this.plugin.settings.AdnvOpend ? "block" : "none";
-      toggleAdvancedButton.setText(this.plugin.settings.AdnvOpend ? "Hide advanced options" : "Show advanced options");
+      transparencyOptionsContainer.style.display = this.plugin.settings.AdnvOpend ? "block" : "none";
+      toggleTransparencyButton.setText(this.plugin.settings.AdnvOpend ? "Hide transparency options" : "Show transparency options");
       await this.plugin.toggleModalStyles();
       this.plugin.applyWallpaper();
       this.plugin.saveSettings();
       this.display();
     };
 
-
-    const tableDescription = advancedOptionsContainer.createEl("p", {
-      cls: "advanced-options-description",
+    const tableDescription = transparencyOptionsContainer.createEl("p", {
+      cls: "transparency-options-description",
     });
     tableDescription.innerHTML =
       "Define UI elements and CSS attributes that should be made transparent. " +
-      "This allows the wallpaper to appear behind the interface, improving readability and aesthetic. " +
-      "Each row lets you specify a target element (CSS selector) and the attribute you want to override.<br><br>" +
-      "Example targets and attributes you can modify:<br>" +
+      "This allows the wallpaper to appear behind the interface, improving readability and aesthetics. " +
+      "Example attributes you can modify:<br>" +
       "• attribute: <code>--background-primary</code><br>" +
       "• attribute: <code>--background-secondary</code><br>" +
       "• attribute: <code>--background-secondary-alt</code><br>" +
@@ -59,7 +59,7 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
       "• attribute: <code>--col-txt-titlebars</code><br><br>" +
       "You can inspect elements and variables using browser dev tools (CTRL + SHIFT + I) to discover more attributes to adjust.";
 
-    const tableContainer = advancedOptionsContainer.createEl("div", {
+    const tableContainer = transparencyOptionsContainer.createEl("div", {
       cls: "text-arena-table-container",
     });
     const table = tableContainer.createEl("table", { cls: "text-arena-table" });
@@ -73,7 +73,7 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
       new Setting(row).addText((text) => {
         text.setValue(entry.attribute).onChange((value) => {
           if (!SettingsUtils.AttributeValid(value)) {
-            return; 
+            return;
           }
           this.plugin.RemoveChanges(index);
           this.plugin.settings.TextArenas[index].attribute = value;
@@ -98,19 +98,20 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
       });
     });
 
-    new Setting(advancedOptionsContainer).addButton((btn) =>
+    new Setting(transparencyOptionsContainer).addButton((btn) =>
       btn
         .setButtonText("Add new element")
         .setClass("text-arena-center-button")
         .setTooltip("Add a new row to the table")
         .onClick(() => {
-          this.plugin.settings.TextArenas.push({attribute: ""});
+          this.plugin.settings.TextArenas.push({ attribute: "" });
           this.display();
         })
     );
+
     let colorPickerRef: any = null;
 
-    new Setting(advancedOptionsContainer)
+    new Setting(transparencyOptionsContainer)
       .setName("Custom background color")
       .setDesc("Set a custom color for the plugin's styling logic")
       .addColorPicker((picker) => {
@@ -136,17 +137,17 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
             }
           })
       );
-    if(Platform.isDesktop)
-    {
-      new Setting(advancedOptionsContainer)
+
+    if (Platform.isDesktop) {
+      new Setting(transparencyOptionsContainer)
         .setName("Modal background effect")
-        .setDesc("Choose how the modal background is styled when advanced options are enabled")
-        .addDropdown(dropdown => {
+        .setDesc("Choose how the modal background is styled when transparency options are enabled")
+        .addDropdown((dropdown) => {
           const MODAL_EFFECTS: Record<string, string> = {
-            "none": "No effect",
-            "blur": "Apply blur effect",
-            "dim": "Dim the background",
-            'blur+dim': "Apply both blur and dim effects",
+            none: "No effect",
+            blur: "Apply blur effect",
+            dim: "Dim the background",
+            "blur+dim": "Apply both blur and dim effects",
           };
 
           dropdown
@@ -158,13 +159,14 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
               this.plugin.toggleModalStyles();
             });
         });
-      new Setting(advancedOptionsContainer)
+
+      new Setting(transparencyOptionsContainer)
         .setName("Modal blur radius")
         .setDesc("Adjust the blur intensity applied to the modal background")
-        .addSlider(slider => {
+        .addSlider((slider) => {
           slider
             .setValue(this.plugin.settings.modalStyle.blurRadius)
-            .setLimits(0, 30, 1) 
+            .setLimits(0, 30, 1)
             .setInstant(true)
             .setDynamicTooltip()
             .onChange(async (value) => {
@@ -174,13 +176,13 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
             });
         });
 
-      new Setting(advancedOptionsContainer)
+      new Setting(transparencyOptionsContainer)
         .setName("Modal dim opacity")
         .setDesc("Adjust the darkness level applied to the modal background")
-        .addSlider(slider => {
+        .addSlider((slider) => {
           slider
-            .setValue(this.plugin.settings.modalStyle.dimOpacity * 100) 
-            .setLimits(0, 100, 5) 
+            .setValue(this.plugin.settings.modalStyle.dimOpacity * 100)
+            .setLimits(0, 100, 5)
             .setInstant(true)
             .setDynamicTooltip()
             .onChange(async (value) => {
@@ -189,10 +191,11 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
               this.plugin.debouncedSave();
             });
         });
-      new Setting(advancedOptionsContainer)
+
+      new Setting(transparencyOptionsContainer)
         .setName("Modal dim color")
         .setDesc("Choose whether the modal background dim is black or white")
-        .addDropdown(dropdown => {
+        .addDropdown((dropdown) => {
           dropdown
             .addOption("black", "Black")
             .addOption("white", "White")
@@ -203,10 +206,11 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
               this.plugin.debouncedSave();
             });
         });
-      new Setting(advancedOptionsContainer)
+
+      new Setting(transparencyOptionsContainer)
         .setName("Disable modal background")
         .setDesc("Turns off the default modal background dim")
-        .addToggle(toggle => {
+        .addToggle((toggle) => {
           toggle
             .setValue(this.plugin.settings.modalStyle.disableModalBg)
             .onChange(async (value) => {
@@ -215,10 +219,11 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
               this.plugin.debouncedSave();
             });
         });
-      new Setting(advancedOptionsContainer)
+
+      new Setting(transparencyOptionsContainer)
         .setName("Reset modal settings")
         .setDesc("Restore default blur and dim opacity for the modal background")
-        .addButton(btn =>
+        .addButton((btn) =>
           btn
             .setIcon("reset")
             .setTooltip("Reset modal styles to default")
@@ -230,6 +235,6 @@ export class LiveWallpaperSettingTab extends PluginSettingTab {
               this.display();
             })
         );
-    };
+    }
   }
 }

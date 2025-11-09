@@ -1,7 +1,6 @@
-import { App, PluginSettingTab, Setting, Platform, Notice, DropdownComponent} from "obsidian";
+import { App, PluginSettingTab, Setting, Platform, Notice} from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
 import SettingsUtils from "./SettingsUtils";
-import Scheduler from "../Scheduler";
 import WallpaperConfigUtils from "../WallpaperConfigUtils";
 const positions = new Map<number, string>([
   [100, 'Right'],

@@ -1,6 +1,5 @@
-import { Notice, debounce } from "obsidian";
+import { debounce } from "obsidian";
 import LiveWallpaperPlugin from "../main";
-import Scheduler from "../Scheduler";
 export default class SettingsUtils {
 	static resizeHandler: (() => void) | null = null;
 	static AttributeValid(attribute: string): boolean {

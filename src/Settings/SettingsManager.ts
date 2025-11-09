@@ -2,21 +2,21 @@ import { App, PluginSettingTab, Setting } from "obsidian";
 import LiveWallpaperPlugin from "../main";
 import { SettingsApp } from "./Settings";
 import { ScheduledApp } from "./ScheduledWallpaperSettings";
-import { LiveWallpaperSettingTab as AdvancedSettingsApp } from "./AdvnSettings";
+import { TransparencySettingsTab as TransparencySettingsApp } from "./TransparencySettings";
 
 export class LiveWallpaperSettingManager extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
   private regularTab: SettingsApp;
   private scheduledTab: ScheduledApp;
-  private advancedTab: AdvancedSettingsApp;
-  private activeTab: "regular" | "advanced" | "dynamic";
+  private transparencyTab: TransparencySettingsApp;
+  private activeTab: "regular" | "transparency" | "dynamic";
 
   constructor(app: App, plugin: LiveWallpaperPlugin) {
     super(app, plugin);
     this.plugin = plugin;
     this.regularTab = new SettingsApp(app, plugin);
     this.scheduledTab = new ScheduledApp(app, plugin);
-    this.advancedTab = new AdvancedSettingsApp(app, plugin);
+    this.transparencyTab = new TransparencySettingsApp(app, plugin);
     this.activeTab = "regular";
   }
 
@@ -49,10 +49,10 @@ export class LiveWallpaperSettingManager extends PluginSettingTab {
       })
       .addButton((button) => {
         button
-          .setButtonText("Advanced settings")
-          .setClass(this.activeTab === "advanced" ? "mod-cta" : "mod-off")
+          .setButtonText("Transparency settings")
+          .setClass(this.activeTab === "transparency" ? "mod-cta" : "mod-off")
           .onClick(() => {
-            this.activeTab = "advanced";
+            this.activeTab = "transparency";
             this.display();
           });
       });
@@ -60,13 +60,14 @@ export class LiveWallpaperSettingManager extends PluginSettingTab {
     const contentContainer = containerEl.createDiv({
       cls: "live-wallpaper-settings-content",
     });
+
     if (this.activeTab === "regular") {
       this.regularTab.containerEl = contentContainer;
       this.regularTab.display();
     } 
-    else if (this.activeTab === "advanced") {
-      this.advancedTab.containerEl = contentContainer;
-      this.advancedTab.display();
+    else if (this.activeTab === "transparency") {
+      this.transparencyTab.containerEl = contentContainer;
+      this.transparencyTab.display();
     } 
     else {
       this.scheduledTab.containerEl = contentContainer;

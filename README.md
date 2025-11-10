@@ -3,20 +3,26 @@
 Live Background Plugin helps you customize Obsidian’s appearance
 by adding animated or static backgrounds to your notes.
 
+> **Supported file formats:** `.jpg`, `.jpeg`, `.png`, `.gif`, `.mp4`, `.webm`, `.avif`
+
+---
+
 ## Features
-- **Supports videos (MP4, WebM), GIFs, and images** — use your own files or choose from built-in templates
-- **Wallpaper history** — easily switch back to previously used wallpapers
-- **Full-resolution wallpapers** — allows you to use images in their original size without downscaling 
-- **Reposition** — adjust the size and placement of your background
-- **Customizable effects:**
-  - Opacity (0–80%)
-  - Blur (0–20px)
-  - Brightness
-  - Adjustable playback speed *(videos only)*
-- **Low CPU usage** — optimized for smooth performance
+
+### General
+- **Configurations** two types of settings are available:  
+  - *Global configuration* applies to all wallpapers  
+  - *Individual configuration* applies to each wallpaper separately  
+- **Reposition** adjusts the size and placement of your background  
+- **Visual Effects** adjust opacity, blur, brightness, contrast, etc 
+- **Wallpaper History** lets you easily switch back to previously used wallpapers  
+- **Full-Resolution Wallpapers** use images in their original size without downscaling  
+- **Reset Options** reset all settings to default for the current or global configuration (all settings in the General section)
 
 > **Important:** In this version, the old `wallpaper` folder has been replaced with a new `wallpapers` folder.  
 > Any unused files in the old folder **may have been automatically removed** during the migration process.
+
+---
 
 ## Scheduled Themes
 
@@ -28,40 +34,44 @@ by adding animated or static backgrounds to your notes.
   Assign a different wallpaper for each day of the week.  
   Wallpapers are automatically changed based on the current weekday.
 
-## Experimental options
-*Deep customization for advanced users (basic CSS knowledge recommended).*
+---
+
+## Transparency settings
+*Advanced customization may require CSS knowledge.*
 
 - **Advanced Transparency**  
   Define CSS selectors and override theme variables to control transparency.
-  This helps the wallpaper appear behind the interface without making the text hard to read, improving both readability and aesthetics.
+  This helps the wallpaper appear behind the interface without making the text hard to read.
   - Define CSS selectors and override theme variables, for example:  
-    - `.theme-dark` → `--background-primary`  
-    - `.theme-dark` → `--col-bckg-mainpanels`  
+    - `--background-primary`  
+    - `--col-bckg-mainpanels`  
 - **Custom Background Color**  
   - Pick any color to use in the plugin’s styling logic  
-  - Quickly reset to default with one click  
 
   > **Note:** The built-in CSS editor has been removed in recent versions of the plugin to prevent accidental overwriting of user styles during updates. For full control, please use the snippet method described above.
+  
 - **Modal Background Effects**
-  Customize how modals look when advanced options are enabled.
+  Customize how modals look.
   - Choose from blur, dim, or combined effects
   - Adjust blur intensity and dim opacity with sliders
   
-  ---
+---
 
-  ### Optional: UI-based CSS customization
+### Optional: UI-based CSS customization
 
-  If you're looking for a graphical interface to tweak theme/plugin variables, try these community plugins:
-  
-  - **Style Settings**
-  - **CSS Snippets**
+If you're looking for a graphical interface to tweak theme/plugin variables, try these community plugins:
 
-  > **Tip:** You may need to use developer tools (Ctrl + Shift + I) to inspect selectors and variables in your theme.
+- **Style Settings**
+- **CSS Snippets**
+
+> **Tip:** You may need to use developer tools (Ctrl + Shift + I) to inspect selectors and variables in your theme.
 
 
 ---
 
 ## Installation  
+
+
 ## From Git
 1. Download the latest release from the Releases page.
 2. Copy the files `main.js`, `manifest.json`, and `styles.css` to the following directory:

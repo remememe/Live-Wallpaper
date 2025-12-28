@@ -34,10 +34,14 @@ export class ScheduledApp extends PluginSettingTab {
 							return;
 						}
 						this.plugin.settings.ScheduledOptions.dayNightMode = value;
-						this.plugin.settings.currentWallpaper = await WallpaperConfigUtils.GetCurrentConfig(this.plugin);
+						await Promise.all(
+							Array.from(this.plugin.windows).map(async (win) => {
+								await this.plugin.applyWallpaper(false,win.document);
+							}
+						));
+						this.plugin.apply(this.plugin.settings.currentWallpaper.path,this.plugin.settings.currentWallpaper.type);
 						await this.plugin.saveSettings();
 						this.display();
-						this.plugin.applyWallpaper();
 					}),
 			);
 
@@ -53,8 +57,10 @@ export class ScheduledApp extends PluginSettingTab {
 					btn
 						.setIcon("folder-open")
 						.setTooltip("Browse for file")
-						.onClick(() => this.plugin.openFilePicker(1,true)),
-				)
+						.onClick((evt: MouseEvent) => {
+							const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
+							this.plugin.openFilePicker(1,true,doc)
+				}));
 
 			new Setting(containerEl)
 				.setName("Night Wallpaper")
@@ -63,8 +69,10 @@ export class ScheduledApp extends PluginSettingTab {
 					btn
 						.setIcon("folder-open")
 						.setTooltip("Browse for file")
-						.onClick(() => this.plugin.openFilePicker(2,true)),
-				);
+						.onClick((evt: MouseEvent) => {
+							const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
+							this.plugin.openFilePicker(2,true,doc)
+				}));
 			let dayTimeValue =
 				this.plugin.settings.ScheduledOptions.dayStartTime;
 			let nightTimeValue =
@@ -102,7 +110,10 @@ export class ScheduledApp extends PluginSettingTab {
 							this.plugin.settings.ScheduledOptions.nightStartTime = nightTimeValue;
 							await this.plugin.saveSettings();
 							new Notice("Wallpaper schedule has been set.");
-							this.plugin.applyWallpaper();
+							for (const win of this.plugin.windows) {
+								this.plugin.applyWallpaper(false,win.document);
+							}
+							this.plugin.apply(this.plugin.settings.currentWallpaper.path,this.plugin.settings.currentWallpaper.type);
 						} 
 						else {
 							new Notice(
@@ -161,10 +172,14 @@ export class ScheduledApp extends PluginSettingTab {
 							return;
 						}
 						this.plugin.settings.ScheduledOptions.weekly = value;
-						this.plugin.settings.currentWallpaper = await WallpaperConfigUtils.GetCurrentConfig(this.plugin);
+						await Promise.all(
+							Array.from(this.plugin.windows).map(async (win) => {
+								await this.plugin.applyWallpaper(false,win.document);
+							}
+						));
+						this.plugin.apply(this.plugin.settings.currentWallpaper.path,this.plugin.settings.currentWallpaper.type);
 						await this.plugin.saveSettings();
 						this.display();
-						this.plugin.applyWallpaper();
 					}),
 			);
 
@@ -192,10 +207,11 @@ export class ScheduledApp extends PluginSettingTab {
 					btn
 						.setIcon("folder-open")
 						.setTooltip("Browse for file")
-						.onClick(() => {
+						.onClick((evt: MouseEvent) => {
+							const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
 							const index = daysOfWeek.indexOf(selectedDay);
 							if (index !== -1) {
-								this.plugin.openFilePicker(index + 3,true);
+								this.plugin.openFilePicker(index + 3,true,doc);
 							} 
 							else {
 								console.warn("Invalid day selected");

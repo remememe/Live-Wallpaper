@@ -94,7 +94,7 @@ interface LiveWallpaperPluginSettings {
   migrated?: boolean; 
 }
 export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
-  LatestVersion: '1.5.4',
+  LatestVersion: '1.5.5',
 
   currentWallpaper: defaultWallpaper,
   globalConfig: {
@@ -140,69 +140,112 @@ export default class LiveWallpaperPlugin extends Plugin {
   private lastPath: string | null = null;
   private lastType: 'image' | 'video' | 'gif' | null = null;
   private _dayNightInterval?: number;
+  public windows = new Set<Window>();
   public resizeRegistered = false;
   public debouncedSave = SettingsUtils.SaveSettingsDebounced(this);  
   public debouncedApplyWallpaper = SettingsUtils.ApplyWallpaperDebounced(this);
-  async onload() 
-  {
+
+  async onload() {
     await this.loadSettings();
     await this.ensureWallpaperFolderExists();
     if (this.isVersionLess(this.settings.LatestVersion, '1.5.1')) {
       await this.migrateOldSettings();
-      this.settings.LatestVersion = '1.5.4';
+      this.settings.LatestVersion = '1.5.5';
       await this.saveSettings();
     }
-    
+
     const anyOptionEnabled = Scheduler.Check(this.settings.ScheduledOptions);
     this.settings.currentWallpaper = await WallpaperConfigUtils.GetCurrentConfig(this);
 
     this.addSettingTab(new LiveWallpaperSettingManager(this.app, this));
-    this.ChangeWallpaperContainer();
-    this.removeExistingWallpaperElements();
-    this.toggleModalStyles();
+    
+    this.windows.add(window);
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      const view = leaf.view;
+      const container = view?.containerEl;
+      if (!container) return;
 
-    const newContainer = this.createWallpaperContainer();
-    const appContainer = document.querySelector('.app-container');
-    if (appContainer) appContainer.insertAdjacentElement('beforebegin', newContainer);
-    else document.body.appendChild(newContainer);
-    document.body.classList.add('live-wallpaper-active');
-    if(anyOptionEnabled)
-    {
-      this.startDayNightWatcher();
-    }
-    this.applyWallpaper(false);
-  
+      const doc = container.ownerDocument;
+      const win = doc.defaultView;
+
+      if (win) {
+        this.windows.add(win);
+      }
+    });
     this.registerEvent(
-      this.app.workspace.on("css-change", () => {
-        const el = document.getElementById("live-wallpaper-container");
-        if (el) this.applyWallpaper(anyOptionEnabled);
+      this.app.workspace.on('window-open', (win, winWindow) => {
+        this.windows.add(winWindow);
+        this.initWallpaperForWindow(winWindow.document);
       })
     );
-    await this.applyBackgroundColor();
+
+    this.registerEvent(
+      this.app.workspace.on('window-close', (win, winWindow) => {
+        this.windows.delete(winWindow);
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on('css-change', () => {
+        this.applyWallpaper(anyOptionEnabled, window.document);
+      })
+    );
+    for (const win of this.windows) {
+      await this.initWallpaperForWindow(win.document);
+    }
+    const firstWin = this.windows.values().next().value;
+    if (Scheduler.Check(this.settings.ScheduledOptions) && firstWin === window) {
+      this.startDayNightWatcher();
+    }
+  }
+
+  async initWallpaperForWindow(doc: Document) {
+    this.ChangeWallpaperContainer(doc);
+    this.removeExistingWallpaperElements(doc);
+    this.toggleModalStyles(doc);
+
+    const newContainer = this.createWallpaperContainer(doc);
+    const appContainer = doc.querySelector('.app-container');
+    if (appContainer) appContainer.insertAdjacentElement('beforebegin', newContainer);
+    else doc.body.appendChild(newContainer);
+
+    doc.body.classList.add('live-wallpaper-active');
+
+    this.applyWallpaper(false, doc);
+    this.apply(this.settings.currentWallpaper.path,this.settings.currentWallpaper.type);
+    await this.applyBackgroundColor(doc);
+
     if (this.settings.currentWallpaper.Reposition) {
-      SettingsUtils.enableReposition(this);
-      const media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+      SettingsUtils.enableReposition(this,doc);
+      const media = doc.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
       if (media && media.parentElement) {
-          const reposition = () => {
-              SettingsUtils.applyImagePosition(media,this.settings.currentWallpaper.positionX,this.settings.currentWallpaper.positionY,this.settings.currentWallpaper.Scale);
-          };
-          const imageLoadHandler = () => {
-              reposition();
-              media.removeEventListener('load', imageLoadHandler);
-          };
-          media.addEventListener('load', imageLoadHandler);
+        const reposition = () => {
+          SettingsUtils.applyImagePosition(
+            media,
+            this.settings.currentWallpaper.positionX,
+            this.settings.currentWallpaper.positionY,
+            this.settings.currentWallpaper.Scale
+          );
+        };
+        const imageLoadHandler = () => {
+          reposition();
+          media.removeEventListener('load', imageLoadHandler);
+        };
+        media.addEventListener('load', imageLoadHandler);
       }
     }
   }
   async unload()
   {
-    await this.clearBackgroundColor();
-    this.removeExistingWallpaperElements();
-    this.RemoveModalStyles();
+    for (const win of this.windows) {
+      this.removeExistingWallpaperElements(win.document);
+      win.document.body.classList.remove('live-wallpaper-active');
+      await this.clearBackgroundColor(win.document);
+      this.RemoveModalStyles(win.document);
+      await this.LoadOrUnloadChanges(false,win.document);
+      SettingsUtils.disableReposition(win);
+    }
+    this.windows.clear();
     this.stopDayNightWatcher();
-    SettingsUtils.disableReposition();
-    document.body.classList.remove('live-wallpaper-active');
-    await this.LoadOrUnloadChanges(false);
     super.unload(); 
   }
   async loadSettings() {
@@ -413,7 +456,7 @@ export default class LiveWallpaperPlugin extends Plugin {
   private isValidWallpaperType(t: any): t is 'image' | 'video' | 'gif' {
     return ['image', 'video', 'gif'].includes(t);
   }
-  public async applyWallpaper(skipConfigReload = false) {
+  public async applyWallpaper(skipConfigReload = false,doc: Document) {
     try {
       if (!skipConfigReload) {
         this.settings.currentWallpaper = await WallpaperConfigUtils.GetCurrentConfig(this);
@@ -436,9 +479,8 @@ export default class LiveWallpaperPlugin extends Plugin {
     }
     const newPath: string | null = this.settings.currentWallpaper.path;
     const newType: 'image' | 'video' | 'gif' = this.settings.currentWallpaper.type;
-
-    const container = document.getElementById('live-wallpaper-container') as HTMLDivElement;
-    let media = document.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
+    const container = doc.getElementById('live-wallpaper-container') as HTMLDivElement;
+    let media = doc.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
     if (container && media) {
       if(this.settings.AdnvOpend)
       {
@@ -457,11 +499,12 @@ export default class LiveWallpaperPlugin extends Plugin {
       Object.assign(container.style, {
         filter: `blur(${this.settings.currentWallpaper.blurRadius}px) brightness(${this.settings.currentWallpaper.brightness}%) contrast(${this.settings.currentWallpaper.contrast}%)`
       });
-      if (media instanceof HTMLVideoElement) {
-        media.playbackRate = this.settings.currentWallpaper.playbackSpeed;
+      if (media.tagName === "VIDEO") {
+        const video = media as HTMLVideoElement;
+        video.playbackRate = this.settings.currentWallpaper.playbackSpeed;
       }
       if (newPath !== this.lastPath || newType !== this.lastType) {
-        const newMedia = await this.createMediaElement();
+        const newMedia = await this.createMediaElement(doc);
         if (newMedia) {
           newMedia.style.opacity = '0';
           newMedia.style.transition = 'opacity 1s ease-in-out';
@@ -473,7 +516,6 @@ export default class LiveWallpaperPlugin extends Plugin {
 
           const medias = container.querySelectorAll('[id^="live-wallpaper-media"]');
           await this.waitForMediaDimensions(newMedia);
-
           medias.forEach((el, i) => {
             if (i < medias.length - 1) {
               const htmlEl = el as HTMLElement;
@@ -491,8 +533,6 @@ export default class LiveWallpaperPlugin extends Plugin {
           });
 
           media = newMedia;
-          this.lastPath = newPath;
-          this.lastType = newType;
         }
       }
       if (this.settings.currentWallpaper.Reposition) {
@@ -506,19 +546,17 @@ export default class LiveWallpaperPlugin extends Plugin {
       }
       return;
     }
-    this.removeExistingWallpaperElements();
-    const newContainer = this.createWallpaperContainer();
-    const newMedia = await this.createMediaElement();
+    this.removeExistingWallpaperElements(doc);
+    const newContainer = this.createWallpaperContainer(doc);
+    const newMedia = await this.createMediaElement(doc);
     if (newMedia) {
       newMedia.id = 'live-wallpaper-media';
       newContainer.appendChild(newMedia);
     }
-    const appContainer = document.querySelector('.app-container');
+    const appContainer = doc.querySelector('.app-container');
     if (appContainer) appContainer.insertAdjacentElement('beforebegin', newContainer);
-    else document.body.appendChild(newContainer);
-    document.body.classList.add('live-wallpaper-active');
-    this.lastPath = newPath;
-    this.lastType = newType;
+    else doc.body.appendChild(newContainer);
+    doc.body.classList.add('live-wallpaper-active');
     if (this.settings.currentWallpaper.Reposition) {
       await this.waitForMediaDimensions(newMedia!);
       SettingsUtils.applyImagePosition(
@@ -529,82 +567,91 @@ export default class LiveWallpaperPlugin extends Plugin {
       );
     }
   }
-
-  private  async ensureWallpaperFolderExists(): Promise<boolean> {
+  public apply(newPath: string,newType: 'image' | 'video' | 'gif')
+  {
+    this.lastPath = newPath;
+    this.lastType = newType;
+  }
+  private async ensureWallpaperFolderExists(): Promise<boolean> {
     try {
       const dir = this.manifest.dir;
       if (!dir) throw new Error("manifest.dir is undefined");
       const wallpaperFolder = `${dir}/wallpaper`;
       return await this.app.vault.adapter.exists(wallpaperFolder);
-    } catch (e) {
+    } 
+    catch (e) {
       console.error("Failed to check wallpaper folder:", e);
       return false;
     }
   }
 
-  async waitForMediaDimensions(element: HTMLImageElement | HTMLVideoElement): Promise<void> {
-    return new Promise((resolve) => {
-      if (element instanceof HTMLImageElement) {
-        if (element.complete && element.naturalWidth !== 0) {
-          resolve();
-        } 
-        else {
-          element.addEventListener("load", () => resolve(), { once: true });
+  async waitForMediaDimensions(element: HTMLImageElement | HTMLVideoElement,timeout = 2000): Promise<void> {
+    if (element instanceof HTMLImageElement) {
+      if (element.complete && element.naturalWidth > 0) return;
+    } 
+    else {
+      if (element.videoWidth > 0) return;
+    }
+
+    return Promise.race([
+      new Promise<void>((resolve) => {
+        if (element instanceof HTMLImageElement) {
+          element.addEventListener('load', () => resolve(), { once: true });
+          element.addEventListener('error', () => resolve(), { once: true });
+        } else {
+          element.addEventListener('loadedmetadata', () => resolve(), { once: true });
+          element.addEventListener('error', () => resolve(), { once: true });
         }
-      } 
-      else {
-        if (element.readyState >= 1 && element.videoWidth !== 0) {
-          resolve();
-        } 
-        else {
-          element.addEventListener("loadedmetadata", () => resolve(), { once: true });
-        }
-      }
-    });
+      }),
+
+      new Promise<void>((resolve) =>
+        setTimeout(() => resolve(), timeout)
+      )
+    ]);
   }
 
-  private removeExistingWallpaperElements() {
-      const existingContainer = document.getElementById('live-wallpaper-container');
-      const existingStyles = document.getElementById('live-wallpaper-overrides');
-      const existingTitlebarStyles = document.getElementById('live-wallpaper-titlebar-styles');
+  private removeExistingWallpaperElements(doc: Document) {
+      const existingContainer = doc.getElementById('live-wallpaper-container');
+      const existingStyles = doc.getElementById('live-wallpaper-overrides');
+      const existingTitlebarStyles = doc.getElementById('live-wallpaper-titlebar-styles');
       
       existingContainer?.remove();
       existingStyles?.remove();
       existingTitlebarStyles?.remove();
-      document.body.classList.remove('live-wallpaper-active');
+      doc.body.classList.remove('live-wallpaper-active');
   }
 
-  private createWallpaperContainer(): HTMLElement {
-      const container = document.createElement('div');
-      container.id = 'live-wallpaper-container';
+  private createWallpaperContainer(Doc: Document): HTMLElement {
+    const container = Doc.createElement('div');
+    container.id = 'live-wallpaper-container';
+    Object.assign(container.style, {
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      width: '100vw',
+      height: '100vh',
+      overflow: 'hidden',
+      pointerEvents: 'none',
+      filter: `blur(${this.settings.currentWallpaper.blurRadius}px) brightness(${this.settings.currentWallpaper.brightness}%) contrast(${this.settings.currentWallpaper.contrast}%)`
+    });
+    if(this.settings.AdnvOpend)
+    {
       Object.assign(container.style, {
-        position: 'fixed',
-        top: '0',
-        left: '0',
-        width: '100vw',
-        height: '100vh',
-        overflow: 'hidden',
-        pointerEvents: 'none',
-        filter: `blur(${this.settings.currentWallpaper.blurRadius}px) brightness(${this.settings.currentWallpaper.brightness}%) contrast(${this.settings.currentWallpaper.contrast}%)`
+        opacity: `1`,
+        zIndex: `0`
       });
-      if(this.settings.AdnvOpend)
-      {
-        Object.assign(container.style, {
-          opacity: `1`,
-          zIndex: `0`
-        });
-      }
-      else
-      {
-        Object.assign(container.style, {
-          opacity: `${Math.min(this.settings.currentWallpaper.opacity / 100, 0.8)}`,
-          zIndex: `${this.settings.currentWallpaper.zIndex}`
-        });
-      }
-      return container;
+    }
+    else
+    {
+      Object.assign(container.style, {
+        opacity: `${Math.min(this.settings.currentWallpaper.opacity / 100, 0.8)}`,
+        zIndex: `${this.settings.currentWallpaper.zIndex}`
+      });
+    }
+    return container;
   }
-  public ChangeWallpaperContainer() {
-    const container = document.getElementById('live-wallpaper-container');
+  public ChangeWallpaperContainer(doc: Document) {
+    const container = doc.getElementById('live-wallpaper-container');
     if (container == null) return;
     const width = this.settings.mobileBackgroundWidth || '100vw';
     const height = this.settings.mobileBackgroundHeight || '100vh';
@@ -613,12 +660,12 @@ export default class LiveWallpaperPlugin extends Plugin {
       height,
     });
   }
-  async createMediaElement(): Promise<HTMLImageElement | HTMLVideoElement | null> 
+  async createMediaElement(doc: Document): Promise<HTMLImageElement | HTMLVideoElement | null> 
   {
     const isVideo = this.settings.currentWallpaper.type === 'video';
     const media = isVideo
-      ? document.createElement('video')
-      : document.createElement('img');
+      ? doc.createElement('video')
+      : doc.createElement('img');
     media.id = 'live-wallpaper-media';
     if (media instanceof HTMLImageElement) {
         media.loading = "lazy"; 
@@ -671,9 +718,9 @@ export default class LiveWallpaperPlugin extends Plugin {
       });
     }
   }
-  async openFilePicker(slotIndex: number, isScheduledPicker = false): Promise<void> {
+  openFilePicker(slotIndex: number,isScheduledPicker = false,doc: Document): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      const fileInput = document.createElement('input');
+      const fileInput = doc.createElement('input');
       fileInput.type = 'file';
       fileInput.accept = '.jpg,.jpeg,.png,.gif,.mp4,.webm,.avif';
       fileInput.multiple = false;
@@ -738,8 +785,10 @@ export default class LiveWallpaperPlugin extends Plugin {
           }
           this.settings.WallpaperConfigs[slotIndex].path = activeRelPath;
           this.settings.WallpaperConfigs[slotIndex].type = this.getWallpaperType(fileName);
-          
-          await this.applyWallpaper();
+          for (const win of this.windows) {
+            await this.applyWallpaper(false,win.document);
+          }
+          this.apply(activeRelPath,this.getWallpaperType(fileName));
           this.debouncedSave();
 
           resolve();
@@ -846,8 +895,8 @@ export default class LiveWallpaperPlugin extends Plugin {
     return canvas.convertToBlob({ quality: 0.8, type: 'image/jpeg' });
   }
 
-  public async LoadOrUnloadChanges(load: boolean): Promise<void> {
-    const el = document.body.classList.contains("theme-dark") || document.body.classList.contains("theme-light") ? document.body : document.documentElement;
+  public async LoadOrUnloadChanges(load: boolean,doc: Document): Promise<void> {
+    const el = doc.body.classList.contains("theme-dark") || doc.body.classList.contains("theme-light") ? doc.body : doc.documentElement;
     if(!el) return;
     for (const { attribute } of this.settings.TextArenas) 
     {
@@ -882,30 +931,30 @@ export default class LiveWallpaperPlugin extends Plugin {
       }
     }
   }
-  public ApplyChanges(id: number): void {
+  public ApplyChanges(id: number,doc: Document): void {
     const { attribute } = this.settings.TextArenas[id];
     const attr = attribute.trim();
     const isVar = attr.startsWith("--");
     let el: HTMLElement | null = null;
 
     if (isVar) {
-      el = document.body.classList.contains("theme-dark") || document.body.classList.contains("theme-light")
-        ? document.body
-        : document.documentElement;
+      el = doc.body.classList.contains("theme-dark") || doc.body.classList.contains("theme-light")
+        ? doc.body
+        : doc.documentElement;
     } 
     else {
-      el = document.body; 
+      el = doc.body; 
     }
     if (!el) return;
     el.style.setProperty(attr, "transparent", "important");
   }
-  public async RemoveChanges(id: number, oldAttribute?: string): Promise<void> {
+  public async RemoveChanges(id: number,doc: Document, oldAttribute?: string): Promise<void> {
     if (id < 0 || id >= this.settings.TextArenas.length) return;
 
     const attribute = (oldAttribute ?? this.settings.TextArenas[id].attribute)?.trim();
-    const el = document.body.classList.contains("theme-dark") || document.body.classList.contains("theme-light")
-      ? document.body
-      : document.documentElement;
+    const el = doc.body.classList.contains("theme-dark") || doc.body.classList.contains("theme-light")
+      ? doc.body
+      : doc.documentElement;
     if (!attribute || !el) return;
 
     try {
@@ -918,15 +967,15 @@ export default class LiveWallpaperPlugin extends Plugin {
       console.error(`Error removing '${attribute}' at index ${id}:`, error);
     }
   }
-  public async toggleModalStyles() {
+  public async toggleModalStyles(doc: Document) {
     const styleId = "extrastyles-dynamic-css";
-    let style = document.getElementById(styleId) as HTMLStyleElement;
+    let style = doc.getElementById(styleId) as HTMLStyleElement;
 
     if (this.settings.AdnvOpend) {
       if (!style) {
-        style = document.createElement("style");
+        style = doc.createElement("style");
         style.id = styleId;
-        document.head.appendChild(style);
+        doc.head.appendChild(style);
       }
 
       const { effect, blurRadius, dimOpacity, dimColor, disableModalBg } = this.settings.modalStyle;
@@ -962,21 +1011,25 @@ export default class LiveWallpaperPlugin extends Plugin {
     }
     const wallpaperExists = await SettingsUtils.getPathExists(this, this.settings.currentWallpaper.path);
     if (!wallpaperExists) {
-      this.LoadOrUnloadChanges(false);
+      for (const win of this.windows) {
+        this.LoadOrUnloadChanges(false,win.document);
+      }
       return;
     }
     else{
-      this.LoadOrUnloadChanges(this.settings.AdnvOpend)
+      for (const win of this.windows) {
+        this.LoadOrUnloadChanges(this.settings.AdnvOpend,win.document)
+      }    
     }
   }
-  private RemoveModalStyles()
+  private RemoveModalStyles(doc: Document)
   {
     const styleId = "extrastyles-dynamic-css";
-    const existingStyle = document.getElementById(styleId);
+    const existingStyle = doc.getElementById(styleId);
     existingStyle != null ? existingStyle.remove() : "";
   }
-  public async applyBackgroundColor() {
-    const existingElement = document.getElementById('live-wallpaper-container');
+  public async applyBackgroundColor(doc: Document) {
+    const existingElement = doc.getElementById('live-wallpaper-container');
     if (existingElement) {
       if (this.settings.AdnvOpend && this.settings.Color) {
           existingElement.parentElement?.style.setProperty('background-color', this.settings.Color, 'important');
@@ -986,26 +1039,26 @@ export default class LiveWallpaperPlugin extends Plugin {
 
     await new Promise<void>((resolve) => {
       const observer = new MutationObserver((mutations, obs) => {
-        const element = document.getElementById('live-wallpaper-container');
+        const element = doc.getElementById('live-wallpaper-container');
         if (element) {
             obs.disconnect();
             resolve();
         }
       });
 
-      observer.observe(document.body, {
+      observer.observe(doc.body, {
         childList: true,
         subtree: true
       });
     });
 
     if (this.settings.AdnvOpend && this.settings.Color) {
-      const Main = document.getElementById('live-wallpaper-container');
+      const Main = doc.getElementById('live-wallpaper-container');
       Main?.parentElement?.style.setProperty('background-color', this.settings.Color, 'important');
     }
   }
-  public async clearBackgroundColor() {
-    const Main = document.getElementById('live-wallpaper-container');
+  public async clearBackgroundColor(doc: Document) {
+    const Main = doc.getElementById('live-wallpaper-container');
     Main?.parentElement?.style.removeProperty('background-color');
   }
   public startDayNightWatcher() {
@@ -1022,7 +1075,9 @@ export default class LiveWallpaperPlugin extends Plugin {
         {
           this.settings.currentWallpaper = this.settings.WallpaperConfigs[index];
         }
-        this.applyWallpaper(true);
+        for (const win of this.windows) {
+          this.applyWallpaper(true,win.document);
+        }
       }
     },Scheduler.getIntervalInMs(this.settings.ScheduledOptions));
   }

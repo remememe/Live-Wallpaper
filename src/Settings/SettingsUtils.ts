@@ -41,25 +41,20 @@ export default class SettingsUtils {
 	static async wallpaperExists(plugin: LiveWallpaperPlugin,path: string): Promise<boolean> {
 		return await plugin.app.vault.adapter.exists(path);
 	}
-	static async applyImagePosition(
-		element: HTMLImageElement | HTMLVideoElement,
-		posXPercent: number,
-		posYPercent: number,
-		scaleFactor: number,
-	) {
+	static async applyImagePosition(element: HTMLImageElement | HTMLVideoElement,posXPercent: number,posYPercent: number,scaleFactor: number) {
 		if (element.parentElement === null) return;
 		const container = element.parentElement!;
 		const containerWidth = container.clientWidth;
 		const containerHeight = container.clientHeight;
+		const isImage = element.tagName === "IMG";
 
-		const naturalWidth =
-			element instanceof HTMLImageElement
-				? element.naturalWidth
-				: element.videoWidth;
-		const naturalHeight =
-			element instanceof HTMLImageElement
-				? element.naturalHeight
-				: element.videoHeight;
+		const naturalWidth = isImage
+			? (element as HTMLImageElement).naturalWidth
+			: (element as HTMLVideoElement).videoWidth;
+
+		const naturalHeight = isImage
+			? (element as HTMLImageElement).naturalHeight
+			: (element as HTMLVideoElement).videoHeight;
 
 		const minScale = Math.max(
 			containerWidth / naturalWidth,
@@ -83,11 +78,10 @@ export default class SettingsUtils {
 		element.style.left = `${containerWidth / 2 - scaledWidth / 2 + offsetX}px`;
 		element.style.top = `${containerHeight / 2 - scaledHeight / 2 + offsetY}px`;
 	}
-
-	static enableReposition(plugin: LiveWallpaperPlugin) {
+	static enableReposition(plugin: LiveWallpaperPlugin,doc: Document) {
 		if (this.resizeHandler) return;
 		this.resizeHandler = () => {
-			const media = document.getElementById("live-wallpaper-media") as
+			const media = doc.getElementById("live-wallpaper-media") as
 				| HTMLImageElement
 				| HTMLVideoElement;
 			if (!media) return;
@@ -102,10 +96,10 @@ export default class SettingsUtils {
 				plugin.settings.currentWallpaper.Scale ?? 1,
 			);
 		};
-		window.addEventListener("resize", this.resizeHandler);
+		doc.win.addEventListener("resize", this.resizeHandler);
 	}
 
-	static disableReposition() {
+	static disableReposition(window: Window) {
 		if (!this.resizeHandler) return;
 		window.removeEventListener("resize", this.resizeHandler);
 		this.resizeHandler = null;
@@ -117,7 +111,10 @@ export default class SettingsUtils {
 	}
 	static ApplyWallpaperDebounced(plugin: LiveWallpaperPlugin) {
 		return debounce(async (skipConfigReload: boolean = false) => {
-			await plugin.applyWallpaper(skipConfigReload);
+			for (const win of plugin.windows) {
+				await plugin.applyWallpaper(skipConfigReload,win.document);
+            }
+			plugin.apply(plugin.settings.currentWallpaper.path,plugin.settings.currentWallpaper.type);
 		}, 300);
 	}
 }

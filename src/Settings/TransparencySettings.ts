@@ -38,8 +38,10 @@ export class TransparencySettingsTab extends PluginSettingTab {
       this.plugin.settings.AdnvOpend = !this.plugin.settings.AdnvOpend;
       transparencyOptionsContainer.style.display = this.plugin.settings.AdnvOpend ? "block" : "none";
       toggleTransparencyButton.setText(this.plugin.settings.AdnvOpend ? "Hide transparency options" : "Show transparency options");
-      await this.plugin.toggleModalStyles();
-      this.plugin.applyWallpaper();
+      for (const win of this.plugin.windows) {
+        await this.plugin.toggleModalStyles(win.document);
+        this.plugin.applyWallpaper(false,win.document);
+      }
       this.plugin.saveSettings();
       this.display();
     };
@@ -71,15 +73,19 @@ export class TransparencySettingsTab extends PluginSettingTab {
     this.plugin.settings.TextArenas.forEach((entry, index) => {
       const row = table.createEl("tr");
       new Setting(row).addText((text) => {
-        text.setValue(entry.attribute).onChange((value) => {
+        text.setValue(entry.attribute).onChange(async (value) => {
           if (!SettingsUtils.AttributeValid(value)) {
             return;
           }
-          this.plugin.RemoveChanges(index);
+          for (const win of this.plugin.windows) {
+            await this.plugin.RemoveChanges(index, win.document);
+          }
           this.plugin.settings.TextArenas[index].attribute = value;
-          this.plugin.LoadOrUnloadChanges(true);
-          this.plugin.saveSettings();
-          this.plugin.ApplyChanges(index);
+          for (const win of this.plugin.windows) {
+            await this.plugin.LoadOrUnloadChanges(true, win.document);
+            this.plugin.ApplyChanges(index, win.document);
+          }
+          await this.plugin.saveSettings(); 
         });
       });
 
@@ -89,9 +95,13 @@ export class TransparencySettingsTab extends PluginSettingTab {
           .setIcon("cross")
           .setTooltip("Remove this entry")
           .onClick(() => {
-            this.plugin.RemoveChanges(index);
+            for (const win of this.plugin.windows) {
+              this.plugin.RemoveChanges(index,win.document);
+            }
             this.plugin.settings.TextArenas.splice(index, 1);
-            this.plugin.LoadOrUnloadChanges(true);
+            for (const win of this.plugin.windows) {
+              this.plugin.LoadOrUnloadChanges(true,win.document);
+            }
             this.plugin.saveSettings();
             this.display();
           });
@@ -121,7 +131,9 @@ export class TransparencySettingsTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.Color = value;
             await this.plugin.saveSettings();
-            this.plugin.applyBackgroundColor();
+            for (const win of this.plugin.windows) {
+              this.plugin.applyBackgroundColor(win.document);
+            }
           });
       })
       .addExtraButton((btn) =>
@@ -131,7 +143,9 @@ export class TransparencySettingsTab extends PluginSettingTab {
           .onClick(async () => {
             this.plugin.settings.Color = "";
             await this.plugin.saveSettings();
-            this.plugin.applyBackgroundColor();
+            for (const win of this.plugin.windows) {
+              this.plugin.applyBackgroundColor(win.document);
+            }
             if (colorPickerRef) {
               colorPickerRef.setValue("#000000");
             }
@@ -156,7 +170,9 @@ export class TransparencySettingsTab extends PluginSettingTab {
             .onChange(async (value) => {
               this.plugin.settings.modalStyle.effect = value as ModalEffect;
               await this.plugin.saveSettings();
-              this.plugin.toggleModalStyles();
+              for (const win of this.plugin.windows) {
+                await this.plugin.toggleModalStyles(win.document);
+              }
             });
         });
 
@@ -171,7 +187,9 @@ export class TransparencySettingsTab extends PluginSettingTab {
             .setDynamicTooltip()
             .onChange(async (value) => {
               this.plugin.settings.modalStyle.blurRadius = value;
-              await this.plugin.toggleModalStyles();
+              for (const win of this.plugin.windows) {
+                await this.plugin.toggleModalStyles(win.document);
+              }
               this.plugin.debouncedSave();
             });
         });
@@ -187,7 +205,9 @@ export class TransparencySettingsTab extends PluginSettingTab {
             .setDynamicTooltip()
             .onChange(async (value) => {
               this.plugin.settings.modalStyle.dimOpacity = value / 100;
-              await this.plugin.toggleModalStyles();
+              for (const win of this.plugin.windows) {
+                await this.plugin.toggleModalStyles(win.document);
+              }
               this.plugin.debouncedSave();
             });
         });
@@ -202,7 +222,9 @@ export class TransparencySettingsTab extends PluginSettingTab {
             .setValue(this.plugin.settings.modalStyle.dimColor)
             .onChange(async (value) => {
               this.plugin.settings.modalStyle.dimColor = value as "black" | "white";
-              await this.plugin.toggleModalStyles();
+              for (const win of this.plugin.windows) {
+                await this.plugin.toggleModalStyles(win.document);
+              }
               this.plugin.debouncedSave();
             });
         });
@@ -215,7 +237,9 @@ export class TransparencySettingsTab extends PluginSettingTab {
             .setValue(this.plugin.settings.modalStyle.disableModalBg)
             .onChange(async (value) => {
               this.plugin.settings.modalStyle.disableModalBg = value;
-              await this.plugin.toggleModalStyles();
+              for (const win of this.plugin.windows) {
+                await this.plugin.toggleModalStyles(win.document);
+              }
               this.plugin.debouncedSave();
             });
         });
@@ -230,7 +254,9 @@ export class TransparencySettingsTab extends PluginSettingTab {
             .onClick(async () => {
               const defaults = DEFAULT_SETTINGS;
               this.plugin.settings.modalStyle = { ...defaults.modalStyle };
-              await this.plugin.toggleModalStyles();
+              for (const win of this.plugin.windows) {
+                await this.plugin.toggleModalStyles(win.document);
+              }
               this.plugin.debouncedSave();
               this.display();
             })

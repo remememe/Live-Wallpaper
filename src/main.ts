@@ -5,7 +5,7 @@ import Scheduler from './Scheduler';
 import WallpaperConfigUtils from './WallpaperConfigUtils';
 export type ModalEffect = 'none' | 'blur' | 'dim' | 'blur+dim';
 
-const defaultWallpaper: WallpaperConfig = {
+export const defaultWallpaper: WallpaperConfig = {
   path: '',
   type: 'image',
   zIndex: 5,
@@ -26,7 +26,7 @@ const defaultWallpaper: WallpaperConfig = {
 export interface ScheduledWallpapersOptions {
   dayNightMode: boolean;
   weekly: boolean;
-  shuffle: boolean;
+  autoSwitch: boolean;
   dayStartTime: string;   
   nightStartTime: string;
   intervalCheckTime: string; 
@@ -94,7 +94,7 @@ interface LiveWallpaperPluginSettings {
   migrated?: boolean; 
 }
 export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
-  LatestVersion: '1.5.5',
+  LatestVersion: '1.5.6',
 
   currentWallpaper: defaultWallpaper,
   globalConfig: {
@@ -127,7 +127,7 @@ export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
   {
     dayNightMode: false,
     weekly: false,
-    shuffle: false,
+    autoSwitch: false,
     dayStartTime: "08:00",
     nightStartTime: "20:00",
     intervalCheckTime: "00:10",
@@ -150,7 +150,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     await this.ensureWallpaperFolderExists();
     if (this.isVersionLess(this.settings.LatestVersion, '1.5.1')) {
       await this.migrateOldSettings();
-      this.settings.LatestVersion = '1.5.5';
+      this.settings.LatestVersion = '1.5.6';
       await this.saveSettings();
     }
 
@@ -199,6 +199,9 @@ export default class LiveWallpaperPlugin extends Plugin {
   }
 
   async initWallpaperForWindow(doc: Document) {
+    if (!this.settings.currentWallpaper) {
+      this.settings.currentWallpaper=this.settings.WallpaperConfigs[0];
+    }
     this.ChangeWallpaperContainer(doc);
     this.removeExistingWallpaperElements(doc);
     this.toggleModalStyles(doc);
@@ -456,7 +459,7 @@ export default class LiveWallpaperPlugin extends Plugin {
   private isValidWallpaperType(t: any): t is 'image' | 'video' | 'gif' {
     return ['image', 'video', 'gif'].includes(t);
   }
-  public async applyWallpaper(skipConfigReload = false,doc: Document) {
+  public async applyWallpaper(skipConfigReload = false,doc: Document) : Promise<boolean> {
     try {
       if (!skipConfigReload) {
         this.settings.currentWallpaper = await WallpaperConfigUtils.GetCurrentConfig(this);
@@ -464,9 +467,9 @@ export default class LiveWallpaperPlugin extends Plugin {
     } 
     catch (err) {
       console.error("Error while accessing wallpaper config:", err);
-      return;
+      return false;
     }
-    if(this.settings.ScheduledOptions.dayNightMode)
+    if(this.settings.ScheduledOptions.dayNightMode || this.settings.ScheduledOptions.autoSwitch)
     {
       this.startDayNightWatcher();
     }
@@ -475,7 +478,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     }
     if (!this.settings.currentWallpaper || !this.settings.currentWallpaper.path) {
       new Notice("No wallpaper path defined, skipping applyWallpaper.");
-      return;
+      return false;
     }
     const newPath: string | null = this.settings.currentWallpaper.path;
     const newType: 'image' | 'video' | 'gif' = this.settings.currentWallpaper.type;
@@ -544,7 +547,7 @@ export default class LiveWallpaperPlugin extends Plugin {
           this.settings.currentWallpaper.Scale
         );
       }
-      return;
+      return true;
     }
     this.removeExistingWallpaperElements(doc);
     const newContainer = this.createWallpaperContainer(doc);
@@ -566,6 +569,7 @@ export default class LiveWallpaperPlugin extends Plugin {
         this.settings.currentWallpaper.Scale
       );
     }
+    return true;
   }
   public apply(newPath: string,newType: 'image' | 'video' | 'gif')
   {
@@ -760,7 +764,6 @@ export default class LiveWallpaperPlugin extends Plugin {
                 ? fileName.slice(0, dotIndex) + '_quality' + fileName.slice(dotIndex)
                 : fileName + '_quality';
           }
-
           const activeRelPath = await this.saveUnder(baseDir, `active/${targetSubfolder}`, fileName, arrayBuffer);
           const historyRelPath = await this.saveUnder(baseDir, `history`, fileName, arrayBuffer);
 
@@ -1066,7 +1069,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     this._dayNightInterval = window.setInterval(() => {
       if(this.settings.Preview) return;
       const index = WallpaperConfigUtils.getWallpaperIndex(this);
-      if (index !== null) {
+      if (index !== undefined) {
         if(this.settings.globalConfig.enabled)
         {
           this.settings.currentWallpaper = WallpaperConfigUtils.applyGlobalConfig(this.settings.WallpaperConfigs[index],this.settings.globalConfig.config);
@@ -1078,6 +1081,7 @@ export default class LiveWallpaperPlugin extends Plugin {
         for (const win of this.windows) {
           this.applyWallpaper(true,win.document);
         }
+        this.apply(this.settings.currentWallpaper.path,this.settings.currentWallpaper.type);
       }
     },Scheduler.getIntervalInMs(this.settings.ScheduledOptions));
   }

@@ -9,7 +9,7 @@ export default class Scheduler {
     const BOOLEAN_KEYS: (keyof ScheduledWallpapersOptions)[] = [
       "dayNightMode",
       "weekly",
-      "shuffle"
+      "autoSwitch"
     ];
 
     return BOOLEAN_KEYS.some((k) => {

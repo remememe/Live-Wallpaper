@@ -3,6 +3,7 @@ import LiveWallpaperPlugin from "../main";
 import Scheduler from "../Scheduler";
 import SettingsUtils from "./SettingsUtils";
 import WallpaperConfigUtils from "../WallpaperConfigUtils";
+import { config } from "process";
 export class ScheduledApp extends PluginSettingTab {
 	plugin: LiveWallpaperPlugin;
 
@@ -250,6 +251,83 @@ export class ScheduledApp extends PluginSettingTab {
 						}
 					});
 				});
+		}
+		new Setting(containerEl)
+			.setName("Auto-rotate wallpapers")
+			.setDesc("Change wallpapers automatically over time")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.ScheduledOptions.autoSwitch)
+					.onChange(async (value) => {
+						const otherEnabled = Scheduler.Check(
+							this.plugin.settings.ScheduledOptions,
+							"autoSwitch",
+						);
+
+						if (value && otherEnabled) {
+							new Notice("Only one mode can be enabled at a time.");
+							toggle.setValue(false);
+							return;
+						}
+						this.plugin.settings.ScheduledOptions.autoSwitch = value;
+						const results = await Promise.all(
+							Array.from(this.plugin.windows).map((win) =>
+								this.plugin.applyWallpaper(false, win.document)
+							)
+						);
+
+						if (results.some((r) => !r)) {
+							await this.plugin.saveSettings();
+							this.display();
+							return;
+						}
+
+						this.plugin.apply(
+							this.plugin.settings.currentWallpaper.path,
+							this.plugin.settings.currentWallpaper.type
+						);
+
+						await this.plugin.saveSettings();
+						this.display();
+					}),
+			);
+
+		if (this.plugin.settings.ScheduledOptions.autoSwitch) {
+			this.plugin.settings.WallpaperConfigs.slice(10,this.plugin.settings.WallpaperConfigs.length).forEach(Config => {
+				new Setting(containerEl)
+					.setName(`Wallpaper ${Config.Index - 9}`)
+					.setDesc("Order in the automatic rotation")
+					.addButton((btn) =>
+						btn
+							.setIcon("folder-open")
+							.setTooltip("Browse for file")
+							.onClick((evt: MouseEvent) => {
+								const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
+								this.plugin.openFilePicker(Config.Index,true,doc)
+						})
+					)
+					.addExtraButton((btn) =>
+						btn
+							.setIcon("x")
+							.setTooltip("Remove")
+							.onClick(async () => {
+								this.plugin.settings.WallpaperConfigs = WallpaperConfigUtils.RemoveConfig(this.plugin.settings.WallpaperConfigs,Config);
+								await this.plugin.saveSettings();
+								this.display();	
+						})
+					);
+			});
+			new Setting(containerEl).addButton((btn) =>
+				btn
+					.setButtonText("Add new element")
+					.setClass("text-arena-center-button")
+					.setTooltip("Add a new row to the table")
+					.onClick(async () => {
+						this.plugin.settings.WallpaperConfigs = WallpaperConfigUtils.NewConfig(this.plugin.settings.WallpaperConfigs);	
+						await this.plugin.saveSettings();
+						this.display();
+					})
+				);
 		}
 		const WALLPAPER_INTERVALS: Record<string, string> = {
 			"00:01": "Every 1 minute",

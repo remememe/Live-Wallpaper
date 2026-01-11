@@ -1,4 +1,3 @@
-import { config } from "process";
 import LiveWallpaperPlugin, {WallpaperConfig,defaultWallpaper} from "./main";
 import Scheduler from "./Scheduler";
 export default class WallpaperConfigUtils {

@@ -3,7 +3,8 @@ import LiveWallpaperPlugin from "../main";
 import Scheduler from "../Scheduler";
 import SettingsUtils from "./SettingsUtils";
 import WallpaperConfigUtils from "../WallpaperConfigUtils";
-import { config } from "process";
+import ApplyManager from "../Wallpaper/WallpaperApplier";
+import { UpdatePaths } from "../Wallpaper/mediaUtils";
 export class ScheduledApp extends PluginSettingTab {
 	plugin: LiveWallpaperPlugin;
 
@@ -37,10 +38,10 @@ export class ScheduledApp extends PluginSettingTab {
 						this.plugin.settings.ScheduledOptions.dayNightMode = value;
 						await Promise.all(
 							Array.from(this.plugin.windows).map(async (win) => {
-								await this.plugin.applyWallpaper(false,win.document);
+								await ApplyManager.applyWallpaper(this.plugin,false,win.document);
 							}
 						));
-						this.plugin.apply(this.plugin.settings.currentWallpaper.path,this.plugin.settings.currentWallpaper.type);
+						UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
 						await this.plugin.saveSettings();
 						this.display();
 					}),
@@ -112,9 +113,9 @@ export class ScheduledApp extends PluginSettingTab {
 							await this.plugin.saveSettings();
 							new Notice("Wallpaper schedule has been set.");
 							for (const win of this.plugin.windows) {
-								this.plugin.applyWallpaper(false,win.document);
+								ApplyManager.applyWallpaper(this.plugin,false,win.document);
 							}
-							this.plugin.apply(this.plugin.settings.currentWallpaper.path,this.plugin.settings.currentWallpaper.type);
+							UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
 						} 
 						else {
 							new Notice(
@@ -175,10 +176,10 @@ export class ScheduledApp extends PluginSettingTab {
 						this.plugin.settings.ScheduledOptions.weekly = value;
 						await Promise.all(
 							Array.from(this.plugin.windows).map(async (win) => {
-								await this.plugin.applyWallpaper(false,win.document);
+								await ApplyManager.applyWallpaper(this.plugin,false,win.document);
 							}
 						));
-						this.plugin.apply(this.plugin.settings.currentWallpaper.path,this.plugin.settings.currentWallpaper.type);
+						UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
 						await this.plugin.saveSettings();
 						this.display();
 					}),
@@ -272,7 +273,7 @@ export class ScheduledApp extends PluginSettingTab {
 						this.plugin.settings.ScheduledOptions.autoSwitch = value;
 						const results = await Promise.all(
 							Array.from(this.plugin.windows).map((win) =>
-								this.plugin.applyWallpaper(false, win.document)
+								ApplyManager.applyWallpaper(this.plugin,false, win.document)
 							)
 						);
 
@@ -282,10 +283,7 @@ export class ScheduledApp extends PluginSettingTab {
 							return;
 						}
 
-						this.plugin.apply(
-							this.plugin.settings.currentWallpaper.path,
-							this.plugin.settings.currentWallpaper.type
-						);
+						UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
 
 						await this.plugin.saveSettings();
 						this.display();

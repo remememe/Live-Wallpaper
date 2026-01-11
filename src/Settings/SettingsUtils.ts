@@ -1,3 +1,6 @@
+import { UpdatePaths } from "../Wallpaper/mediaUtils";
+import WallpaperApplier from "../Wallpaper/WallpaperApplier";
+import { applyMediaStyles } from "../Wallpaper/wallpaperMedia";
 import { debounce } from "obsidian";
 import LiveWallpaperPlugin from "../main";
 export default class SettingsUtils {
@@ -86,7 +89,7 @@ export default class SettingsUtils {
 				| HTMLVideoElement;
 			if (!media) return;
 			if (!plugin.settings.currentWallpaper.Reposition) {
-				plugin.applyMediaStyles(media);
+				applyMediaStyles(media,plugin.settings.currentWallpaper);
 				return;
 			}
 			this.applyImagePosition(
@@ -112,9 +115,9 @@ export default class SettingsUtils {
 	static ApplyWallpaperDebounced(plugin: LiveWallpaperPlugin) {
 		return debounce(async (skipConfigReload: boolean = false) => {
 			for (const win of plugin.windows) {
-				await plugin.applyWallpaper(skipConfigReload,win.document);
+				await WallpaperApplier.applyWallpaper(plugin,skipConfigReload,win.document);
             }
-			plugin.apply(plugin.settings.currentWallpaper.path,plugin.settings.currentWallpaper.type);
+			UpdatePaths(plugin,{path:plugin.settings.currentWallpaper.path,type:plugin.settings.currentWallpaper.type});
 		}, 300);
 	}
 }

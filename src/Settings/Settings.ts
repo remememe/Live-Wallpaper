@@ -1,4 +1,11 @@
-import { App, PluginSettingTab, Setting, Platform, Notice} from "obsidian";
+import { ChangeWallpaperContainer } from "../Wallpaper/wallpaperDom";
+import { UpdatePaths } from "../Wallpaper/mediaUtils";
+import { applyMediaStyles } from "../Wallpaper/wallpaperMedia";
+import WallpaperApplier from "../Wallpaper/WallpaperApplier";
+import { toggleModalStyles } from "../Styles/ModalStyles";
+import { removeAllExcept, removeFileIfUnused } from "../FilePicker/fileUtils";
+import { cleanInvalidWallpaperHistory } from "../FilePicker/historyManager";
+import { App, PluginSettingTab, Setting, Platform, Notice } from "obsidian";
 import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
 import SettingsUtils from "./SettingsUtils";
 import WallpaperConfigUtils from "../WallpaperConfigUtils";
@@ -43,7 +50,7 @@ export class SettingsApp extends PluginSettingTab {
         .setClass("mod-cta")
         .onClick(async () => {
           containerEl.empty();
-          await this.plugin.cleanInvalidWallpaperHistory();
+          await cleanInvalidWallpaperHistory(this.plugin);
           this.plugin.settings.HistoryPaths.forEach((entry) => {
             new Setting(containerEl)
               .setName(entry.fileName)
@@ -74,11 +81,12 @@ export class SettingsApp extends PluginSettingTab {
                   const folder = relativeTargetFullPath.substring(0, relativeTargetFullPath.lastIndexOf('/'));
 
                   if (ActiveSubFolder === "normal") {
-                    await this.plugin.removeAllExcept(folder, relativeTargetFullPath);
+                    await removeAllExcept(this.plugin,folder,relativeTargetFullPath);
                   } 
                   else {
                     const Path = `plugins/${pluginId}/wallpapers/active/${ActiveSubFolder}/${entry.fileName}`;
-                    await this.plugin.removeFileIfUnused(
+                    await removeFileIfUnused(
+                      this.plugin,
                       Path,
                       this.plugin.settings.WallpaperConfigs[Index].path,
                       WallpaperConfigUtils.getPaths(Index, this.plugin.settings.WallpaperConfigs)
@@ -95,8 +103,8 @@ export class SettingsApp extends PluginSettingTab {
                       const view = leaf.view;
                       const container = view.containerEl;
                       const doc = container.ownerDocument;
-                      await this.plugin.toggleModalStyles(doc);
-                      this.plugin.applyWallpaper(true,doc);
+                      await toggleModalStyles(doc,this.plugin);
+                      WallpaperApplier.applyWallpaper(this.plugin,true,doc);
                     }
                   });
                   await this.plugin.saveSettings();
@@ -138,7 +146,7 @@ export class SettingsApp extends PluginSettingTab {
           await this.plugin.openFilePicker(this.plugin.settings.currentWallpaper.Index,false, doc);
 
           for (const win of this.plugin.windows) {
-              await this.plugin.toggleModalStyles(win.document);
+              await toggleModalStyles(win.document,this.plugin);
           }
         })
     );
@@ -156,12 +164,12 @@ export class SettingsApp extends PluginSettingTab {
                 const media = win.document.getElementById('live-wallpaper-media') as
                   HTMLImageElement | HTMLVideoElement;
 
-                await this.plugin.toggleModalStyles(win.document);
-                this.plugin.applyMediaStyles(media);
-                await this.plugin.applyWallpaper(false, win.document); 
+                await toggleModalStyles(win.document,this.plugin);
+                applyMediaStyles(media,this.plugin.settings.currentWallpaper);
+                await WallpaperApplier.applyWallpaper(this.plugin,false, win.document); 
               })
             );
-            this.plugin.apply(this.plugin.settings.currentWallpaper.path,this.plugin.settings.currentWallpaper.type);
+            UpdatePaths(this.plugin,{path:this.plugin.settings.currentWallpaper.path,type:this.plugin.settings.currentWallpaper.type});
             await this.plugin.saveSettings();
             this.display();
         });
@@ -197,11 +205,11 @@ export class SettingsApp extends PluginSettingTab {
               this.plugin.settings.Preview = true;
               await Promise.all(
                 Array.from(this.plugin.windows).map(async (win) => {
-                  await this.plugin.toggleModalStyles(win.document);
-                  await this.plugin.applyWallpaper(false,win.document);
+                  await toggleModalStyles(win.document,this.plugin);
+                  await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
                 }
               ));
-              this.plugin.apply(this.plugin.settings.currentWallpaper.path,this.plugin.settings.currentWallpaper.type);
+              UpdatePaths(this.plugin,{path:this.plugin.settings.currentWallpaper.path,type:this.plugin.settings.currentWallpaper.type});
               new Notice(`Previewing wallpaper for ${MODAL_EFFECTS[value]}`);
               
               await this.plugin.saveSettings();
@@ -220,8 +228,8 @@ export class SettingsApp extends PluginSettingTab {
               this.plugin.settings.currentWallpaper = { ...currentConfig };
               this.plugin.settings.Preview = false;
               for (const win of this.plugin.windows) {
-                await this.plugin.toggleModalStyles(win.document);
-                this.plugin.applyWallpaper(false,win.document);
+                await toggleModalStyles(win.document,this.plugin);
+                WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
               }
               new Notice("Preview turned off restored scheduled wallpaper.");
               
@@ -268,7 +276,7 @@ export class SettingsApp extends PluginSettingTab {
               } 
               else {
                 SettingsUtils.disableReposition(win);
-                this.plugin.applyMediaStyles(media);
+                applyMediaStyles(media,this.plugin.settings.currentWallpaper);
               }
             }
             this.plugin.settings.currentWallpaper.Reposition = value;
@@ -551,7 +559,7 @@ export class SettingsApp extends PluginSettingTab {
               this.plugin.settings.mobileBackgroundWidth = value;
               await this.plugin.saveSettings();
               for (const win of this.plugin.windows) {
-                this.plugin.ChangeWallpaperContainer(win.document);
+                ChangeWallpaperContainer(win.document,{width:this.plugin.settings.mobileBackgroundWidth,height:this.plugin.settings.mobileBackgroundHeight});
               }
             })
         );
@@ -569,7 +577,7 @@ export class SettingsApp extends PluginSettingTab {
             this.plugin.settings.mobileBackgroundHeight = value;
               await this.plugin.saveSettings();
               for (const win of this.plugin.windows) {
-                this.plugin.ChangeWallpaperContainer(win.document);
+                ChangeWallpaperContainer(win.document,{width:this.plugin.settings.mobileBackgroundWidth,height:this.plugin.settings.mobileBackgroundHeight});
               }
             })
         );
@@ -583,7 +591,7 @@ export class SettingsApp extends PluginSettingTab {
             for (const win of this.plugin.windows) {
               this.plugin.settings.mobileBackgroundHeight = win.innerHeight.toString() + "px";
               this.plugin.settings.mobileBackgroundWidth = win.innerWidth.toString() + "px";
-              this.plugin.ChangeWallpaperContainer(win.document);
+              ChangeWallpaperContainer(win.document,{width:this.plugin.settings.mobileBackgroundWidth,height:this.plugin.settings.mobileBackgroundHeight});
             }
             await this.plugin.saveSettings();
             this.display();
@@ -611,7 +619,7 @@ export class SettingsApp extends PluginSettingTab {
             defaults.mobileBackgroundWidth;
           await this.plugin.saveSettings();
           for (const win of this.plugin.windows) {
-            this.plugin.applyWallpaper(false,win.document);
+            WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
           }
           this.display();
         })

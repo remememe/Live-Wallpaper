@@ -1,4 +1,4 @@
-import LiveWallpaperPlugin from "../main";
+import type LiveWallpaperPlugin from "../main";
 import { LoadOrUnloadChanges } from "./TextArenaStyles";
 import SettingsUtils from "../Settings/SettingsUtils";
 export async function toggleModalStyles(doc: Document,Plugin: LiveWallpaperPlugin) {

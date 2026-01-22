@@ -3,7 +3,8 @@ import { RemoveChanges, LoadOrUnloadChanges, ApplyChanges } from "../Styles/Text
 import WallpaperApplier from "../Wallpaper/WallpaperApplier";
 import { toggleModalStyles } from "../Styles/ModalStyles";
 import { PluginSettingTab, App, Setting, Platform } from "obsidian";
-import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
+import type LiveWallpaperPlugin from "../main";
+import { DEFAULT_SETTINGS } from "../main";
 import type { ModalEffect } from "../main";
 import SettingsUtils from "./SettingsUtils";
 

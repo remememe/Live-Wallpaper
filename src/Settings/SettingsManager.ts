@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
-import LiveWallpaperPlugin from "../main";
+import type LiveWallpaperPlugin from "../main";
 import { SettingsApp } from "./Settings";
 import { ScheduledApp } from "./ScheduledWallpaperSettings";
 import { TransparencySettingsTab as TransparencySettingsApp } from "./TransparencySettings";

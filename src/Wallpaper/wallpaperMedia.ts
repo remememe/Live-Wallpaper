@@ -1,7 +1,8 @@
-import LiveWallpaperPlugin, { WallpaperConfig } from "../main";
-export async function createMediaElement(doc: Document, Plugin: LiveWallpaperPlugin): Promise<HTMLImageElement | HTMLVideoElement | null> 
+import type LiveWallpaperPlugin from "../main";
+import type { WallpaperConfig } from "../main";
+export async function createMediaElement(doc: Document, plugin: LiveWallpaperPlugin): Promise<HTMLImageElement | HTMLVideoElement | null> 
 {
-    const { currentWallpaper } = Plugin.settings;
+    const { currentWallpaper } = plugin.settings;
     const isVideo = currentWallpaper.type === 'video';
 
     const media = isVideo
@@ -14,24 +15,24 @@ export async function createMediaElement(doc: Document, Plugin: LiveWallpaperPlu
     media.loading = "lazy";
     }
 
-    const path = `${Plugin.app.vault.configDir}/${currentWallpaper.path}`;
-    const exists = await Plugin.app.vault.adapter.exists(path);
+    const path = `${plugin.app.vault.configDir}/${currentWallpaper.path}`;
+    const exists = await plugin.app.vault.adapter.exists(path);
 
     if (!exists) {
         currentWallpaper.path = '';
         return null;
     }
 
-    media.src = Plugin.app.vault.adapter.getResourcePath(path);
+    media.src = plugin.app.vault.adapter.getResourcePath(path);
 
     applyMediaStyles(media, currentWallpaper);
 
     if (isVideo) {
-    const video = media as HTMLVideoElement;
-    video.autoplay = true;
-    video.loop = true;
-    video.muted = true;
-    video.playbackRate = currentWallpaper.playbackSpeed;
+        const video = media as HTMLVideoElement;
+        video.autoplay = true;
+        video.loop = true;
+        video.muted = true;
+        video.playbackRate = currentWallpaper.playbackSpeed;
     }
 
     return media;

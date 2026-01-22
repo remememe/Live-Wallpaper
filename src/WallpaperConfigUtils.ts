@@ -125,5 +125,7 @@ export default class WallpaperConfigUtils {
 			.filter(c => c.Index !== config.Index)
 			.map((c, i) => ({ ...c, Index: i }));
 	}
-
+	static ClearConfigsFromIndex(configs: WallpaperConfig[],startIndex: number): WallpaperConfig[] {
+		return configs.filter(c => c.Index < startIndex);
+	}
 }

@@ -1,10 +1,13 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
-import LiveWallpaperPlugin from "../main";
+import type LiveWallpaperPlugin from "../main";
 import Scheduler from "../Scheduler";
 import SettingsUtils from "./SettingsUtils";
 import WallpaperConfigUtils from "../WallpaperConfigUtils";
 import ApplyManager from "../Wallpaper/WallpaperApplier";
-import { UpdatePaths } from "../Wallpaper/mediaUtils";
+import { UpdatePaths, GetFileName } from "../Wallpaper/mediaUtils";
+import { openFilePicker } from "../FilePicker/filePicker";
+import { removeFileIfUnused } from "../FilePicker/fileUtils";
+import { toggleModalStyles } from "../Styles/ModalStyles";
 export class ScheduledApp extends PluginSettingTab {
 	plugin: LiveWallpaperPlugin;
 
@@ -61,7 +64,7 @@ export class ScheduledApp extends PluginSettingTab {
 						.setTooltip("Browse for file")
 						.onClick((evt: MouseEvent) => {
 							const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
-							this.plugin.openFilePicker(1,true,doc)
+							openFilePicker(this.plugin,1,true,doc)
 				}));
 
 			new Setting(containerEl)
@@ -73,7 +76,7 @@ export class ScheduledApp extends PluginSettingTab {
 						.setTooltip("Browse for file")
 						.onClick((evt: MouseEvent) => {
 							const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
-							this.plugin.openFilePicker(2,true,doc)
+							openFilePicker(this.plugin,2,true,doc)
 				}));
 			let dayTimeValue =
 				this.plugin.settings.ScheduledOptions.dayStartTime;
@@ -113,7 +116,7 @@ export class ScheduledApp extends PluginSettingTab {
 							await this.plugin.saveSettings();
 							new Notice("Wallpaper schedule has been set.");
 							for (const win of this.plugin.windows) {
-								ApplyManager.applyWallpaper(this.plugin,false,win.document);
+								await ApplyManager.applyWallpaper(this.plugin,false,win.document);
 							}
 							UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
 						} 
@@ -213,7 +216,7 @@ export class ScheduledApp extends PluginSettingTab {
 							const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
 							const index = daysOfWeek.indexOf(selectedDay);
 							if (index !== -1) {
-								this.plugin.openFilePicker(index + 3,true,doc);
+								openFilePicker(this.plugin,index + 3,true,doc);
 							} 
 							else {
 								console.warn("Invalid day selected");
@@ -293,15 +296,20 @@ export class ScheduledApp extends PluginSettingTab {
 		if (this.plugin.settings.ScheduledOptions.autoSwitch) {
 			this.plugin.settings.WallpaperConfigs.slice(10,this.plugin.settings.WallpaperConfigs.length).forEach(Config => {
 				new Setting(containerEl)
-					.setName(`Wallpaper ${Config.Index - 9}`)
+					.setName(`Wallpaper ${GetFileName(Config.path)}`)
 					.setDesc("Order in the automatic rotation")
 					.addButton((btn) =>
 						btn
 							.setIcon("folder-open")
 							.setTooltip("Browse for file")
-							.onClick((evt: MouseEvent) => {
+							.onClick(async (evt: MouseEvent) => {
 								const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
-								this.plugin.openFilePicker(Config.Index,true,doc)
+								await openFilePicker(this.plugin,Config.Index,true,doc);
+								await Promise.all(
+									Array.from(this.plugin.windows).map(async (win) => {
+										await toggleModalStyles(win.document,this.plugin);
+									}
+								));
 						})
 					)
 					.addExtraButton((btn) =>
@@ -309,6 +317,8 @@ export class ScheduledApp extends PluginSettingTab {
 							.setIcon("x")
 							.setTooltip("Remove")
 							.onClick(async () => {
+								const baseActiveDir = `${this.app.vault.configDir}/plugins/${this.plugin.manifest.id}/wallpapers/active/autoSwitch`;
+								await removeFileIfUnused(this.plugin,baseActiveDir,this.plugin.settings.WallpaperConfigs[Config.Index].path);
 								this.plugin.settings.WallpaperConfigs = WallpaperConfigUtils.RemoveConfig(this.plugin.settings.WallpaperConfigs,Config);
 								await this.plugin.saveSettings();
 								this.display();	
@@ -323,6 +333,25 @@ export class ScheduledApp extends PluginSettingTab {
 					.onClick(async () => {
 						this.plugin.settings.WallpaperConfigs = WallpaperConfigUtils.NewConfig(this.plugin.settings.WallpaperConfigs);	
 						await this.plugin.saveSettings();
+						this.display();
+					})
+				);
+			new Setting(containerEl)
+				.setName("Wallpaper folder")
+				.setDesc("Select a folder and load all wallpapers")
+				.addButton(btn =>
+					btn
+					.setIcon("folder")
+					.setButtonText("Select folder")
+					.onClick(async (evt) => {
+						const doc = (evt.currentTarget as HTMLElement).ownerDocument;
+						await this.plugin.openFolderPicker(doc);
+						await Promise.all(
+							Array.from(this.plugin.windows).map(async (win) => {
+								await toggleModalStyles(win.document,this.plugin);
+							}
+						));
+						UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
 						this.display();
 					})
 				);

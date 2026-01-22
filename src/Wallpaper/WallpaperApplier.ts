@@ -1,44 +1,41 @@
-import LiveWallpaperPlugin from '../main';
+import type LiveWallpaperPlugin from '../main';
 import { waitForMediaDimensions, GetConfig } from './mediaUtils';
 import { applyContainerEffects } from './wallpaperDom';
 import { createMediaElement } from './wallpaperMedia';
 import { Notice } from 'obsidian';
 import SettingsUtils from "../Settings/SettingsUtils";
 export default class WallpaperApplier {
-	public static async applyWallpaper(Plugin: LiveWallpaperPlugin,skipConfigReload = false,doc: Document): Promise<boolean> {
-        const config = await GetConfig(Plugin, skipConfigReload);
-
+	public static async applyWallpaper(plugin: LiveWallpaperPlugin,skipConfigReload = false,doc: Document): Promise<boolean> {
+        const config = await GetConfig(plugin, skipConfigReload);
         if (!config) {
             return false;
         }
 
-        Plugin.settings.currentWallpaper = config;
-		if (Plugin.settings.ScheduledOptions.dayNightMode || Plugin.settings.ScheduledOptions.autoSwitch) {
-			Plugin.startDayNightWatcher();
+        plugin.settings.currentWallpaper = config;
+		if (plugin.settings.ScheduledOptions.dayNightMode || plugin.settings.ScheduledOptions.autoSwitch) {
+			plugin.startDayNightWatcher();
 		} 
 		else {
-			Plugin.stopDayNightWatcher();
+			plugin.stopDayNightWatcher();
 		}
-		if (!Plugin.settings.currentWallpaper || !Plugin.settings.currentWallpaper.path) 
+		if (!plugin.settings.currentWallpaper || !plugin.settings.currentWallpaper.path) 
 		{
 			new Notice("No wallpaper path defined, skipping applyWallpaper.");
 			return false;
 		}
 
-		const newPath: string | null = Plugin.settings.currentWallpaper.path;
-		const newType: "image" | "video" | "gif" = Plugin.settings.currentWallpaper.type;
+		const newPath: string | null = plugin.settings.currentWallpaper.path;
+		const newType: "image" | "video" | "gif" = plugin.settings.currentWallpaper.type;
 		const container = doc.getElementById("live-wallpaper-container") as HTMLDivElement;
 		let media = doc.getElementById("live-wallpaper-media") as | HTMLImageElement | HTMLVideoElement;
 		if (container && media) {
-			applyContainerEffects(container,Plugin.settings.currentWallpaper,Plugin.settings.AdnvOpend);
-
+			applyContainerEffects(container,plugin.settings.currentWallpaper,plugin.settings.AdnvOpend);
 			if (media.tagName === "VIDEO") {
 				const video = media as HTMLVideoElement;
-				video.playbackRate = Plugin.settings.currentWallpaper.playbackSpeed;
+				video.playbackRate = plugin.settings.currentWallpaper.playbackSpeed;
 			}
-			
-			if (newPath !== Plugin.lastPath || newType !== Plugin.lastType) {
-				const newMedia = await createMediaElement(doc,Plugin);
+			if (newPath !== plugin.lastPath || newType !== plugin.lastType) {
+				const newMedia = await createMediaElement(doc,plugin);
 				if (newMedia) {
 					newMedia.style.opacity = "0";
 					newMedia.style.transition = "opacity 1s ease-in-out";
@@ -73,18 +70,18 @@ export default class WallpaperApplier {
 					media = newMedia;
 				}
 			}
-			if (Plugin.settings.currentWallpaper.Reposition) {
+			if (plugin.settings.currentWallpaper.Reposition) {
 				await waitForMediaDimensions(media);
 				SettingsUtils.applyImagePosition(
 					media,
-					Plugin.settings.currentWallpaper.positionX,
-					Plugin.settings.currentWallpaper.positionY,
-					Plugin.settings.currentWallpaper.Scale,
+					plugin.settings.currentWallpaper.positionX,
+					plugin.settings.currentWallpaper.positionY,
+					plugin.settings.currentWallpaper.Scale,
 				);
 			}
 			return true;
 		}
-		await Plugin.CreateMedia(doc);
+		await plugin.CreateMedia(doc);
 		return true;
 	}
 }

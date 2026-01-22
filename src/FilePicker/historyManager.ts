@@ -1,37 +1,46 @@
-import LiveWallpaperPlugin from "../main";
+import type LiveWallpaperPlugin from "../main";
 import { HistoryEntry } from "../main";
 export function prependHistory(history: HistoryEntry[],entry: HistoryEntry): HistoryEntry[] {
-    return [
-        entry,
-        ...history.filter(e => e.path !== entry.path)
-    ];
+  return [
+      entry,
+      ...history.filter(e => e.path !== entry.path)
+  ];
 }   
+export async function trimHistory(plugin: LiveWallpaperPlugin,max: number,folderPath: string) {
+  const filesInFolder = await plugin.app.vault.adapter.list(folderPath);
+  if (filesInFolder.files.length <= max) return;
 
-export async function trimHistory(plugin: LiveWallpaperPlugin,max: number) {
-    const over = plugin.settings.HistoryPaths.length - max;
-    if (over <= 0) return;
+  const allowed = new Set(
+    plugin.settings.HistoryPaths
+      .slice(0, max)
+      .map(e => e.path.split("/").pop())
+      .filter((p): p is string => !!p)
+  );
 
-    const toRemove = plugin.settings.HistoryPaths.slice(max);
-    plugin.settings.HistoryPaths =
+  const toRemove = filesInFolder.files.filter(file => {
+    const fileName = file.split("/").pop();
+    return fileName && !allowed.has(fileName);
+  });
+
+  plugin.settings.HistoryPaths =
     plugin.settings.HistoryPaths.slice(0, max);
 
-    for (const e of toRemove) {
-        const full = `${plugin.app.vault.configDir}/${e.path}`;
-        await plugin.app.vault.adapter.remove(full).catch(() => {});
-    }
+  for (const file of toRemove) {
+    await plugin.app.vault.adapter.remove(file).catch(() => {});
+  }
 }
 export async function cleanInvalidWallpaperHistory(plugin: LiveWallpaperPlugin) {
-    const validPaths = [];
+  const validPaths = [];
 
-    for (const entry of plugin.settings.HistoryPaths) {
-      const fullPath = `${plugin.app.vault.configDir}/${entry.path}`;
-      const exists = await plugin.app.vault.adapter.exists(fullPath);
+  for (const entry of plugin.settings.HistoryPaths) {
+    const fullPath = `${plugin.app.vault.configDir}/${entry.path}`;
+    const exists = await plugin.app.vault.adapter.exists(fullPath);
 
-      if (exists) {
-        validPaths.push(entry);
-      }
+    if (exists) {
+      validPaths.push(entry);
     }
-
-    plugin.settings.HistoryPaths = validPaths;
-    await plugin.saveSettings(); 
   }
+
+  plugin.settings.HistoryPaths = validPaths;
+  await plugin.saveSettings(); 
+}

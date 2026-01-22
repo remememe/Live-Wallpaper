@@ -3,12 +3,14 @@ import { UpdatePaths } from "../Wallpaper/mediaUtils";
 import { applyMediaStyles } from "../Wallpaper/wallpaperMedia";
 import WallpaperApplier from "../Wallpaper/WallpaperApplier";
 import { toggleModalStyles } from "../Styles/ModalStyles";
-import { removeAllExcept, removeFileIfUnused } from "../FilePicker/fileUtils";
+import { removeAllExcept, removeUnusedFilesInFolder } from "../FilePicker/fileUtils";
 import { cleanInvalidWallpaperHistory } from "../FilePicker/historyManager";
 import { App, PluginSettingTab, Setting, Platform, Notice } from "obsidian";
-import LiveWallpaperPlugin, { DEFAULT_SETTINGS } from "../main";
+import type LiveWallpaperPlugin from "../main";
+import { DEFAULT_SETTINGS }  from "../main";
 import SettingsUtils from "./SettingsUtils";
 import WallpaperConfigUtils from "../WallpaperConfigUtils";
+import { openFilePicker } from "../FilePicker/filePicker";
 const positions = new Map<number, string>([
   [100, 'Right'],
   [0, 'Left'],
@@ -84,29 +86,21 @@ export class SettingsApp extends PluginSettingTab {
                     await removeAllExcept(this.plugin,folder,relativeTargetFullPath);
                   } 
                   else {
-                    const Path = `plugins/${pluginId}/wallpapers/active/${ActiveSubFolder}/${entry.fileName}`;
-                    await removeFileIfUnused(
-                      this.plugin,
-                      Path,
-                      this.plugin.settings.WallpaperConfigs[Index].path,
-                      WallpaperConfigUtils.getPaths(Index, this.plugin.settings.WallpaperConfigs)
-                    );
+                    const Path = `.obsidian/plugins/${pluginId}/wallpapers/active/${ActiveSubFolder}`;
+                    await removeUnusedFilesInFolder(this.plugin,Path,this.plugin.settings.currentWallpaper.Index,this.plugin.settings.currentWallpaper.path);
                   }
 
                   this.plugin.settings.currentWallpaper.path = `plugins/${pluginId}/wallpapers/active/${ActiveSubFolder}/${entry.fileName}`;
                   this.plugin.settings.currentWallpaper.type = entry.type;
                   this.plugin.settings.WallpaperConfigs[Index].path = `plugins/${pluginId}/wallpapers/active/${ActiveSubFolder}/${entry.fileName}`;
                   this.plugin.settings.WallpaperConfigs[Index].type = entry.type;
-
-                  this.app.workspace.iterateAllLeaves(async (leaf) => {
-                    if (leaf.getViewState().type === "markdown") {
-                      const view = leaf.view;
-                      const container = view.containerEl;
-                      const doc = container.ownerDocument;
-                      await toggleModalStyles(doc,this.plugin);
-                      WallpaperApplier.applyWallpaper(this.plugin,true,doc);
-                    }
-                  });
+                  await Promise.all(
+                    Array.from(this.plugin.windows).map(async (win) => {
+                      await toggleModalStyles(win.document,this.plugin);
+                      await WallpaperApplier.applyWallpaper(this.plugin,true,win.document);
+                    })
+                  );
+                  UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
                   await this.plugin.saveSettings();
                   this.display();
                 });
@@ -143,10 +137,10 @@ export class SettingsApp extends PluginSettingTab {
         .onClick(async (evt: MouseEvent) => {
           const doc = (evt.currentTarget as HTMLElement).ownerDocument;
 
-          await this.plugin.openFilePicker(this.plugin.settings.currentWallpaper.Index,false, doc);
+          await openFilePicker(this.plugin,this.plugin.settings.currentWallpaper.Index,false, doc);
 
           for (const win of this.plugin.windows) {
-              await toggleModalStyles(win.document,this.plugin);
+            await toggleModalStyles(win.document,this.plugin);
           }
         })
     );
@@ -227,12 +221,14 @@ export class SettingsApp extends PluginSettingTab {
             if (currentConfig) {
               this.plugin.settings.currentWallpaper = { ...currentConfig };
               this.plugin.settings.Preview = false;
-              for (const win of this.plugin.windows) {
-                await toggleModalStyles(win.document,this.plugin);
-                WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
-              }
+              await Promise.all(
+                Array.from(this.plugin.windows).map(async (win) => {
+                  await toggleModalStyles(win.document,this.plugin);
+                  await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+                })
+              );
               new Notice("Preview turned off restored scheduled wallpaper.");
-              
+              UpdatePaths(this.plugin,{path:this.plugin.settings.currentWallpaper.path,type:this.plugin.settings.currentWallpaper.type});
               await this.plugin.saveSettings();
               this.display();
             }

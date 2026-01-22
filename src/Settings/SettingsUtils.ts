@@ -2,7 +2,7 @@ import { UpdatePaths } from "../Wallpaper/mediaUtils";
 import WallpaperApplier from "../Wallpaper/WallpaperApplier";
 import { applyMediaStyles } from "../Wallpaper/wallpaperMedia";
 import { debounce } from "obsidian";
-import LiveWallpaperPlugin from "../main";
+import type LiveWallpaperPlugin from "../main";
 export default class SettingsUtils {
 	static resizeHandler: (() => void) | null = null;
 	static AttributeValid(attribute: string): boolean {

@@ -1,11 +1,11 @@
 import { LoadOrUnloadChanges } from './Styles/TextArenaStyles';
 import { toggleModalStyles, RemoveModalStyles } from './Styles/ModalStyles';
 import { applyBackgroundColor, clearBackgroundColor } from './Styles/BackgroundColor';
-import { removeAllExcept, removeFileIfUnused } from './FilePicker/fileUtils';
+import { removeAllExcept, removeUnusedFilesInFolder,  } from './FilePicker/fileUtils';
 import { prependHistory, trimHistory } from './FilePicker/historyManager';
 import { getFileArrayBuffer } from './FilePicker/fileManager';
 import { saveUnder } from './FilePicker/fileManager';
-import { pickSingleFile, validateWallpaperFile, getWallpaperType } from './FilePicker/filePicker';
+import { validateWallpaperFile, getWallpaperType, pickFolderFiles} from './FilePicker/filePicker';
 import { waitForMediaDimensions, UpdatePaths } from './Wallpaper/mediaUtils';
 import { removeExistingWallpaperElements, createWallpaperContainer, ChangeWallpaperContainer } from './Wallpaper/wallpaperDom';
 import { createMediaElement } from './Wallpaper/wallpaperMedia';
@@ -107,7 +107,7 @@ export interface LiveWallpaperPluginSettings {
   migrated?: boolean; 
 }
 export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
-  LatestVersion: '1.5.7',
+  LatestVersion: '1.5.8',
 
   currentWallpaper: defaultWallpaper,
   globalConfig: {
@@ -163,7 +163,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     await this.ensureWallpaperFolderExists();
     if (this.isVersionLess(this.settings.LatestVersion, '1.5.1')) {
       await Migrate.migrateOldSettings(this as any);
-      this.settings.LatestVersion = '1.5.7';
+      this.settings.LatestVersion = '1.5.8';
       await this.saveSettings();
     }
 
@@ -325,66 +325,109 @@ export default class LiveWallpaperPlugin extends Plugin {
       );
     }
   }
-  public async openFilePicker(slotIndex: number,isScheduledPicker = false,doc: Document): Promise<void> {
-    const file = await pickSingleFile(doc);
-    if (!file) return;
-
-    if(!validateWallpaperFile(file, this.settings.SizeLimited))
-    {
+  public async applyWallpaperFile(file: File,slotIndex: number,doc: Document,isScheduledPicker = false): Promise<void> {
+    if (!validateWallpaperFile(file, this.settings.SizeLimited)) {
       return;
     }
 
+    const baseDir = `${this.app.vault.configDir}/plugins/${this.manifest.id}/wallpapers`;
+    const arrayBuffer = await getFileArrayBuffer(file,{
+      maxWidth: doc.win.innerWidth,
+      mobileBackgroundWidth: this.settings.mobileBackgroundWidth,
+      allowFullRes: this.settings.currentWallpaper.Quality
+    });
+
+    const targetSubfolder = WallpaperConfigUtils.computeActiveSubfolder(slotIndex);
+
+    let fileName = file.name;
+    if (file.type.startsWith('image/') && this.settings.currentWallpaper.Quality) {
+      const dotIndex = fileName.lastIndexOf('.');
+      fileName =
+        dotIndex !== -1
+          ? fileName.slice(0, dotIndex) + '_quality' + fileName.slice(dotIndex)
+          : fileName + '_quality';
+    }
+
+    const activeRelPath = await saveUnder(
+      this,
+      baseDir,
+      `active/${targetSubfolder}`,
+      fileName,
+      arrayBuffer
+    );
+
+    const historyRelPath = await saveUnder(
+      this,
+      baseDir,
+      `history`,
+      fileName,
+      arrayBuffer
+    );
+
+    this.settings.HistoryPaths = prependHistory(this.settings.HistoryPaths,{ path: historyRelPath, type: getWallpaperType(fileName), fileName });
+
+    await trimHistory(this,5,`${baseDir}/history`);
+
+    if (this.settings.Preview && !isScheduledPicker) {
+      this.settings.currentWallpaper.path = activeRelPath;
+      this.settings.currentWallpaper.type = getWallpaperType(fileName);
+    }
+
+    if (this.settings.globalConfig.enabled) {
+      this.settings.globalConfig.config.path = activeRelPath;
+      this.settings.globalConfig.config.type = getWallpaperType(fileName);
+    }
+    this.settings.WallpaperConfigs[slotIndex].path = activeRelPath;
+    this.settings.WallpaperConfigs[slotIndex].type = getWallpaperType(fileName);
+    for (const win of this.windows) {
+      await ApplyManager.applyWallpaper(this,false,win.document);
+    }
+
+    if (slotIndex === 0) {
+      const folder = activeRelPath.substring(0, activeRelPath.lastIndexOf('/'));
+      await removeAllExcept(this, folder, activeRelPath);
+    } 
+    else {
+      const folder = `${baseDir}/active/${targetSubfolder}`;
+      await removeUnusedFilesInFolder(this,folder,slotIndex,activeRelPath);
+    }
+    UpdatePaths(this, {path: activeRelPath, type: getWallpaperType(fileName)});
+  }
+  public async openFolderPicker(doc: Document): Promise<void> {
+    const files = await pickFolderFiles(doc);
+    this.settings.WallpaperConfigs = WallpaperConfigUtils.ClearConfigsFromIndex(this.settings.WallpaperConfigs,10);
+    if (files === null) return;
+
+    const validFiles = files.filter(f =>
+      validateWallpaperFile(f, this.settings.SizeLimited)
+    );
+
+    if (validFiles.length === 0) return;
+
     try {
-      const baseDir = `${this.app.vault.configDir}/plugins/${this.manifest.id}/wallpapers`;
-      const arrayBuffer = await getFileArrayBuffer(file,{maxWidth: doc.win.innerWidth,mobileBackgroundWidth:this.settings.mobileBackgroundWidth,allowFullRes: this.settings.currentWallpaper.Quality});
-      const targetSubfolder = WallpaperConfigUtils.computeActiveSubfolder(slotIndex);
 
-      let fileName = file.name;
-      if (file.type.startsWith('image/') && this.settings.currentWallpaper.Quality) {
-        const dotIndex = fileName.lastIndexOf('.');
-        fileName =
-          dotIndex !== -1
-            ? fileName.slice(0, dotIndex) + '_quality' + fileName.slice(dotIndex)
-            : fileName + '_quality';
+      const START_INDEX = 10;
+      for (let i = 0; i < validFiles.length; i++) {
+        const slotIndex = START_INDEX + i;
+        this.settings.WallpaperConfigs = WallpaperConfigUtils.NewConfig(this.settings.WallpaperConfigs);
+        await this.applyWallpaperFile(validFiles[i], slotIndex, doc, false);
       }
-      const activeRelPath = await saveUnder(this,baseDir, `active/${targetSubfolder}`, fileName, arrayBuffer);
-      const historyRelPath = await saveUnder(this,baseDir, `history`, fileName, arrayBuffer);
 
-      prependHistory(this.settings.HistoryPaths , { path: historyRelPath, type: getWallpaperType(fileName), fileName });
-      await trimHistory(this,5);
-      if (slotIndex === 0) {
-        const folder = activeRelPath.substring(0, activeRelPath.lastIndexOf('/'));
-        await removeAllExcept(this,folder, activeRelPath);
-      } 
-      else {
-        await removeFileIfUnused(this,activeRelPath, this.settings.WallpaperConfigs[slotIndex].path, WallpaperConfigUtils.getPaths(slotIndex,this.settings.WallpaperConfigs));
-      }
-      if(this.settings.Preview && !isScheduledPicker)
-      {
-        this.settings.currentWallpaper.path = activeRelPath;
-        this.settings.currentWallpaper.type = getWallpaperType(fileName);
-      }
-      if(this.settings.globalConfig.enabled)
-      {
-        this.settings.globalConfig.config.path = activeRelPath;
-        this.settings.globalConfig.config.type = getWallpaperType(fileName);
-      }
-      this.settings.WallpaperConfigs[slotIndex].path = activeRelPath;
-      this.settings.WallpaperConfigs[slotIndex].type = getWallpaperType(fileName);
       for (const win of this.windows) {
-        await ApplyManager.applyWallpaper(this,false,win.document);
+        await ApplyManager.applyWallpaper(this, false, win.document);
       }
-      UpdatePaths(this,{path: activeRelPath,type: getWallpaperType(fileName)});
+
       this.debouncedSave();
     } 
     catch (error) {
-      alert('Could not save the file. Check disk permissions.');
+      alert("Could not import wallpaper folder.");
       console.error(error);
     }
   }
+
   public startDayNightWatcher() {
     this.stopDayNightWatcher();
-    this._dayNightInterval = window.setInterval(() => {
+    this._dayNightInterval = window.setInterval(async () => {
       if(this.settings.Preview) return;
       const index = WallpaperConfigUtils.getWallpaperIndex(this);
       if (index !== undefined) {
@@ -397,7 +440,7 @@ export default class LiveWallpaperPlugin extends Plugin {
           this.settings.currentWallpaper = this.settings.WallpaperConfigs[index];
         }
         for (const win of this.windows) {
-          ApplyManager.applyWallpaper(this,true,win.document);
+          await ApplyManager.applyWallpaper(this, true, win.document);
         }
         UpdatePaths(this,{path: this.settings.currentWallpaper.path,type: this.settings.currentWallpaper.type});
       }

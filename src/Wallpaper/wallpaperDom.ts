@@ -1,4 +1,4 @@
-import { WallpaperConfig } from '../main';
+import type { WallpaperConfig } from '../main';
 export function removeExistingWallpaperElements(doc: Document) {
     const existingContainer = doc.getElementById('live-wallpaper-container');
     const existingStyles = doc.getElementById('live-wallpaper-overrides');

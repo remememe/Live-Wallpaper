@@ -37,42 +37,12 @@ export default class WallpaperApplier {
 			if (newPath !== plugin.lastPath || newType !== plugin.lastType) {
 				const newMedia = await createMediaElement(doc,plugin);
 				if (newMedia) {
-					newMedia.style.opacity = "0";
-					newMedia.style.transition = "opacity 1s ease-in-out";
-					container.appendChild(newMedia);
-
-					await new Promise<void>((resolve) =>
-						requestAnimationFrame(() => resolve()),
-					);
-
-					await new Promise((resolve) => setTimeout(resolve, 20));
-
-					const medias = container.querySelectorAll(
-						'[id^="live-wallpaper-media"]',
-					);
-					await waitForMediaDimensions(newMedia);
-					medias.forEach((el, i) => {
-						if (i < medias.length - 1) {
-							const htmlEl = el as HTMLElement;
-
-							htmlEl.style.transition = "opacity 1s ease-in-out";
-							htmlEl.style.opacity = "0";
-							newMedia.style.opacity = "1";
-
-							setTimeout(() => {
-								if (htmlEl.parentElement) {
-									htmlEl.remove();
-								}
-							}, 3000);
-						}
-					});
-
+					WallpaperApplier.applyNewMedia(newMedia, container);
 					media = newMedia;
 				}
 			}
 			if (plugin.settings.currentWallpaper.Reposition) {
-				await waitForMediaDimensions(media);
-				SettingsUtils.applyImagePosition(
+				await SettingsUtils.applyImagePosition(
 					media,
 					plugin.settings.currentWallpaper.positionX,
 					plugin.settings.currentWallpaper.positionY,
@@ -83,5 +53,37 @@ export default class WallpaperApplier {
 		}
 		await plugin.CreateMedia(doc);
 		return true;
+	}
+	public static async applyNewMedia(newMedia: HTMLImageElement | HTMLVideoElement,container: HTMLDivElement)
+	{
+		await waitForMediaDimensions(newMedia);
+		newMedia.style.opacity = "0";
+		newMedia.style.transition = "opacity 1s ease-in-out";
+		container.appendChild(newMedia);
+
+		await new Promise<void>((resolve) =>
+			requestAnimationFrame(() => resolve()),
+		);
+
+		await new Promise((resolve) => setTimeout(resolve, 20));
+
+		const medias = container.querySelectorAll(
+			'[id^="live-wallpaper-media"]',
+		);
+		medias.forEach((el, i) => {
+			if (i < medias.length - 1) {
+				const htmlEl = el as HTMLElement;
+
+				htmlEl.style.transition = "opacity 1s ease-in-out";
+				htmlEl.style.opacity = "0";
+				newMedia.style.opacity = "1";
+
+				setTimeout(() => {
+					if (htmlEl.parentElement) {
+						htmlEl.remove();
+					}
+				}, 3000);
+			}
+		});
 	}
 }

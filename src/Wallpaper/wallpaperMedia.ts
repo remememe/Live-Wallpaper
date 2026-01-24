@@ -22,7 +22,6 @@ export async function createMediaElement(doc: Document, plugin: LiveWallpaperPlu
         currentWallpaper.path = '';
         return null;
     }
-
     media.src = plugin.app.vault.adapter.getResourcePath(path);
 
     applyMediaStyles(media, currentWallpaper);

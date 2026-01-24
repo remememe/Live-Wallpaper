@@ -1,18 +1,11 @@
 import type LiveWallpaperPlugin from "../main";
 import WallpaperConfigUtils from "../WallpaperConfigUtils";
-export async function removeFileIfUnused(plugin: LiveWallpaperPlugin, folderPath: string,fileRemovedName: string) {
-  const filesInFolder = await plugin.app.vault.adapter.list(folderPath);
-
-  const matches = filesInFolder.files.filter(
-    file => file.split("/").pop() === fileRemovedName.split("/").pop()
+export async function removeFileIfUnused(plugin: LiveWallpaperPlugin,index: number,filetoRemoveName: string) {
+  const matches = WallpaperConfigUtils.getPaths(index,plugin.settings.WallpaperConfigs).filter(
+    file => file.split("/").pop() === filetoRemoveName.split("/").pop()
   );
-
-  if (matches.length > 1) {
-    return;
-  }
-  if (matches.length === 1) {
-    await plugin.app.vault.adapter.remove(matches[0]).catch(() => {});
-  }
+  if (matches.length !== 1) return;
+  await plugin.app.vault.adapter.remove(`.obsidian/${filetoRemoveName}`).catch(() => {});
 }
 export async function removeUnusedFilesInFolder(plugin: LiveWallpaperPlugin,folderPath: string,index: number,currentPath: string) {
   const filesInFolder = await plugin.app.vault.adapter.list(folderPath);

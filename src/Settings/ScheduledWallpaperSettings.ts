@@ -310,6 +310,7 @@ export class ScheduledApp extends PluginSettingTab {
 										await toggleModalStyles(win.document,this.plugin);
 									}
 								));
+								this.display();
 						})
 					)
 					.addExtraButton((btn) =>
@@ -317,8 +318,7 @@ export class ScheduledApp extends PluginSettingTab {
 							.setIcon("x")
 							.setTooltip("Remove")
 							.onClick(async () => {
-								const baseActiveDir = `${this.app.vault.configDir}/plugins/${this.plugin.manifest.id}/wallpapers/active/autoSwitch`;
-								await removeFileIfUnused(this.plugin,baseActiveDir,this.plugin.settings.WallpaperConfigs[Config.Index].path);
+								await removeFileIfUnused(this.plugin,Config.Index,this.plugin.settings.WallpaperConfigs[Config.Index].path);
 								this.plugin.settings.WallpaperConfigs = WallpaperConfigUtils.RemoveConfig(this.plugin.settings.WallpaperConfigs,Config);
 								await this.plugin.saveSettings();
 								this.display();	
@@ -330,8 +330,16 @@ export class ScheduledApp extends PluginSettingTab {
 					.setButtonText("Add new element")
 					.setClass("text-arena-center-button")
 					.setTooltip("Add a new row to the table")
-					.onClick(async () => {
+					.onClick(async (evt) => {
+						const doc = (evt.currentTarget as HTMLElement).ownerDocument;
 						this.plugin.settings.WallpaperConfigs = WallpaperConfigUtils.NewConfig(this.plugin.settings.WallpaperConfigs);	
+						await openFilePicker(this.plugin,this.plugin.settings.WallpaperConfigs.length - 1,true,doc);
+						await Promise.all(
+							Array.from(this.plugin.windows).map(async (win) => {
+								await toggleModalStyles(win.document,this.plugin);
+							}
+						));
+						UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
 						await this.plugin.saveSettings();
 						this.display();
 					})

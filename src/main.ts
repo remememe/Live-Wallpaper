@@ -107,7 +107,7 @@ export interface LiveWallpaperPluginSettings {
   migrated?: boolean; 
 }
 export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
-  LatestVersion: '1.5.8',
+  LatestVersion: '1.5.9',
 
   currentWallpaper: defaultWallpaper,
   globalConfig: {
@@ -163,7 +163,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     await this.ensureWallpaperFolderExists();
     if (this.isVersionLess(this.settings.LatestVersion, '1.5.1')) {
       await Migrate.migrateOldSettings(this as any);
-      this.settings.LatestVersion = '1.5.8';
+      this.settings.LatestVersion = '1.5.9';
       await this.saveSettings();
     }
 
@@ -395,8 +395,8 @@ export default class LiveWallpaperPlugin extends Plugin {
   }
   public async openFolderPicker(doc: Document): Promise<void> {
     const files = await pickFolderFiles(doc);
-    this.settings.WallpaperConfigs = WallpaperConfigUtils.ClearConfigsFromIndex(this.settings.WallpaperConfigs,10);
     if (files === null) return;
+    this.settings.WallpaperConfigs = WallpaperConfigUtils.ClearConfigsFromIndex(this.settings.WallpaperConfigs,10);
 
     const validFiles = files.filter(f =>
       validateWallpaperFile(f, this.settings.SizeLimited)

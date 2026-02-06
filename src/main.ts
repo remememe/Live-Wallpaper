@@ -107,7 +107,7 @@ export interface LiveWallpaperPluginSettings {
   migrated?: boolean; 
 }
 export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
-  LatestVersion: '1.5.9',
+  LatestVersion: '1.6.0',
 
   currentWallpaper: defaultWallpaper,
   globalConfig: {
@@ -163,7 +163,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     await this.ensureWallpaperFolderExists();
     if (this.isVersionLess(this.settings.LatestVersion, '1.5.1')) {
       await Migrate.migrateOldSettings(this as any);
-      this.settings.LatestVersion = '1.5.9';
+      this.settings.LatestVersion = '1.6.0';
       await this.saveSettings();
     }
 

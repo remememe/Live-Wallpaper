@@ -284,6 +284,19 @@ export class SettingsApp extends PluginSettingTab {
       new Setting(containerEl)
         .setName('Horizontal position')
         .setDesc('Adjust the horizontal position of the wallpaper.')
+        .addExtraButton((button) => {
+          button
+          .setIcon("rotate-ccw")
+          .setTooltip("Reset")
+          .onClick(async () => {
+            this.plugin.settings.currentWallpaper.positionX = DEFAULT_SETTINGS.currentWallpaper.positionX;
+            await this.plugin.saveSettings();
+            for (const win of this.plugin.windows) {
+              await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+            }
+            this.display();
+          }) 
+        })
         .addSlider(slider => {
           slider
             .setLimits(0, 100, 1) 
@@ -306,6 +319,19 @@ export class SettingsApp extends PluginSettingTab {
       new Setting(containerEl)
         .setName('Vertical position')
         .setDesc('Adjust the vertical position of the wallpaper.')
+        .addExtraButton((button) => {
+          button
+          .setIcon("rotate-ccw")
+          .setTooltip("Reset")
+          .onClick(async () => {
+            this.plugin.settings.currentWallpaper.positionY = DEFAULT_SETTINGS.currentWallpaper.positionY;
+            await this.plugin.saveSettings();
+            for (const win of this.plugin.windows) {
+              await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+            }
+            this.display();
+          }) 
+        })
         .addSlider(slider => {
           slider
             .setLimits(0, 100, 1)
@@ -327,6 +353,19 @@ export class SettingsApp extends PluginSettingTab {
       new Setting(containerEl)
         .setName('Image scale') 
         .setDesc('Adjust the size of the wallpaper.') 
+        .addExtraButton((button) => {
+          button
+          .setIcon("rotate-ccw")
+          .setTooltip("Reset")
+          .onClick(async () => {
+            this.plugin.settings.currentWallpaper.Scale = DEFAULT_SETTINGS.currentWallpaper.Scale;
+            await this.plugin.saveSettings();
+            for (const win of this.plugin.windows) {
+              await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+            }
+            this.display();
+          }) 
+        })
         .addSlider(slider => {
           slider
             .setLimits(0.5,2,0.1)
@@ -401,6 +440,21 @@ export class SettingsApp extends PluginSettingTab {
       .setDesc(
         "Controls the transparency level of the wallpaper (0% = fully transparent, 100% = fully visible)"
       )
+      .addExtraButton((button) => {
+        button
+         .setIcon("rotate-ccw")
+         .setTooltip("Reset")
+         .onClick(async () => {
+            if (this.plugin.settings.AdnvOpend) return;
+            
+            this.plugin.settings.currentWallpaper.opacity = DEFAULT_SETTINGS.currentWallpaper.opacity;
+            await this.plugin.saveSettings();
+            for (const win of this.plugin.windows) {
+              await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+            }
+            this.display();
+         }) 
+      })
       .addSlider((slider) => {
         const valueEl = containerEl.createEl("span", {
           text: ` ${this.plugin.settings.currentWallpaper.opacity}%`,
@@ -435,6 +489,19 @@ export class SettingsApp extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Blur radius")
       .setDesc("Applies a blur effect to the wallpaper in pixels")
+      .addExtraButton((button) => {
+        button
+         .setIcon("rotate-ccw")
+         .setTooltip("Reset")
+         .onClick(async () => {
+            this.plugin.settings.currentWallpaper.blurRadius = DEFAULT_SETTINGS.currentWallpaper.blurRadius;
+            await this.plugin.saveSettings();
+            for (const win of this.plugin.windows) {
+              await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+            }
+            this.display();
+         }) 
+      })
       .addSlider((slider) => {
         const valueEl = containerEl.createEl("span", {
           text: ` ${this.plugin.settings.currentWallpaper.blurRadius}px`,
@@ -455,6 +522,19 @@ export class SettingsApp extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Brightness")
       .setDesc("Adjusts the wallpaper brightness (100% = normal)")
+      .addExtraButton((button) => {
+        button
+         .setIcon("rotate-ccw")
+         .setTooltip("Reset")
+         .onClick(async () => {
+            this.plugin.settings.currentWallpaper.brightness = DEFAULT_SETTINGS.currentWallpaper.brightness;
+            await this.plugin.saveSettings();
+            for (const win of this.plugin.windows) {
+              await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+            }
+            this.display();
+         }) 
+      })
       .addSlider((slider) => {
         const valueEl = containerEl.createEl("span", {
           text: ` ${this.plugin.settings.currentWallpaper.brightness}%`,
@@ -474,6 +554,19 @@ export class SettingsApp extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Contrast")
       .setDesc("Controls the wallpaper contrast intensity 100% represents the original image")
+      .addExtraButton((button) => {
+        button
+         .setIcon("rotate-ccw")
+         .setTooltip("Reset")
+         .onClick(async () => {
+            this.plugin.settings.currentWallpaper.contrast = DEFAULT_SETTINGS.currentWallpaper.contrast;
+            await this.plugin.saveSettings();
+            for (const win of this.plugin.windows) {
+              await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+            }
+            this.display();
+         }) 
+      })
       .addSlider((slider) => {
         const valueEl = containerEl.createEl("span", {
           text: ` ${this.plugin.settings.currentWallpaper.contrast}%`,
@@ -495,6 +588,21 @@ export class SettingsApp extends PluginSettingTab {
       .setDesc(
         "Determines the stacking order: higher values bring the wallpaper closer to the front"
       )
+      .addExtraButton((button) => {
+        button
+         .setIcon("rotate-ccw")
+         .setTooltip("Reset")
+         .onClick(async () => {
+            if (!this.plugin.settings.AdnvOpend) {
+              this.plugin.settings.currentWallpaper.zIndex = DEFAULT_SETTINGS.currentWallpaper.zIndex;
+              await this.plugin.saveSettings();
+              for (const win of this.plugin.windows) {
+                await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+              }
+              this.display();
+            }
+         }) 
+      })
       .addSlider((slider) => {
         const valueEl = containerEl.createEl("span", {
           text: ` ${this.plugin.settings.currentWallpaper.zIndex}`,
@@ -519,6 +627,19 @@ export class SettingsApp extends PluginSettingTab {
       .setDesc(
         "Adjust the playback speed for videos (0.25x – 2x). This does not affect GIFs."
       )
+      .addExtraButton((button) => {
+        button
+         .setIcon("rotate-ccw")
+         .setTooltip("Reset")
+         .onClick(async () => {
+            this.plugin.settings.currentWallpaper.playbackSpeed = DEFAULT_SETTINGS.currentWallpaper.playbackSpeed;
+            await this.plugin.saveSettings();
+            for (const win of this.plugin.windows) {
+              await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+            }
+            this.display();
+         }) 
+      })
       .addSlider((slider) => {
         const valueEl = containerEl.createSpan({
           text: `${this.plugin.settings.currentWallpaper.playbackSpeed.toFixed(2)}x`,
@@ -547,6 +668,19 @@ export class SettingsApp extends PluginSettingTab {
         .setDesc(
           "Set a custom width for the background on mobile (e.g., 100vw or 500px)."
         )
+        .addExtraButton((button) => {
+          button
+          .setIcon("rotate-ccw")
+          .setTooltip("Reset")
+          .onClick(async () => {
+              this.plugin.settings.mobileBackgroundWidth = DEFAULT_SETTINGS.mobileBackgroundWidth;
+              await this.plugin.saveSettings();
+              for (const win of this.plugin.windows) {
+                ChangeWallpaperContainer(win.document,{width:this.plugin.settings.mobileBackgroundWidth,height:this.plugin.settings.mobileBackgroundHeight});
+              }
+              this.display();
+          }) 
+        })
         .addText((text) =>
           text
             .setPlaceholder("e.g., 100vw")
@@ -565,6 +699,19 @@ export class SettingsApp extends PluginSettingTab {
         .setDesc(
           "Set a custom height for the background on mobile (e.g., 100vh or 800px)."
         )
+        .addExtraButton((button) => {
+          button
+          .setIcon("rotate-ccw")
+          .setTooltip("Reset")
+          .onClick(async () => {
+              this.plugin.settings.mobileBackgroundHeight = DEFAULT_SETTINGS.mobileBackgroundHeight;
+              await this.plugin.saveSettings();
+              for (const win of this.plugin.windows) {
+                ChangeWallpaperContainer(win.document,{width:this.plugin.settings.mobileBackgroundWidth,height:this.plugin.settings.mobileBackgroundHeight});
+              }
+              this.display();
+          }) 
+        })
         .addText((text) =>
           text
             .setPlaceholder("e.g., 100vh")
@@ -594,31 +741,5 @@ export class SettingsApp extends PluginSettingTab {
           })
         );
     }
-    new Setting(containerEl)
-      .setName("Reset options")
-      .setDesc("Resets all settings")
-      .addButton((Button) =>
-        Button.setButtonText("Reset").onClick(async () => {
-          const defaults = DEFAULT_SETTINGS;
-          this.plugin.settings.currentWallpaper.path = defaults.currentWallpaper.path;
-          this.plugin.settings.currentWallpaper.type = defaults.currentWallpaper.type;
-          this.plugin.settings.HistoryPaths = defaults.HistoryPaths;
-          this.plugin.settings.currentWallpaper.playbackSpeed = defaults.currentWallpaper.playbackSpeed;
-          this.plugin.settings.currentWallpaper.opacity = defaults.currentWallpaper.opacity;
-          this.plugin.settings.currentWallpaper.zIndex = defaults.currentWallpaper.zIndex;
-          this.plugin.settings.currentWallpaper.blurRadius = defaults.currentWallpaper.blurRadius;
-          this.plugin.settings.currentWallpaper.brightness = defaults.currentWallpaper.brightness;
-          this.plugin.settings.currentWallpaper.contrast = defaults.currentWallpaper.contrast;
-          this.plugin.settings.mobileBackgroundHeight =
-            defaults.mobileBackgroundHeight;
-          this.plugin.settings.mobileBackgroundWidth =
-            defaults.mobileBackgroundWidth;
-          await this.plugin.saveSettings();
-          for (const win of this.plugin.windows) {
-            WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
-          }
-          this.display();
-        })
-      );
   }
 }

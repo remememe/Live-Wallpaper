@@ -6,10 +6,10 @@ import { TransparencySettingsTab as TransparencySettingsApp } from "./Transparen
 
 export class LiveWallpaperSettingManager extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
-  private regularTab: SettingsApp;
-  private scheduledTab: ScheduledApp;
-  private transparencyTab: TransparencySettingsApp;
-  private activeTab: "regular" | "transparency" | "dynamic";
+  private readonly regularTab: SettingsApp;
+  private readonly scheduledTab: ScheduledApp;
+  private readonly transparencyTab: TransparencySettingsApp;
+  private activeTab: "regular" | "transparency" | "dynamic" | "experimental";
 
   constructor(app: App, plugin: LiveWallpaperPlugin) {
     super(app, plugin);
@@ -55,7 +55,7 @@ export class LiveWallpaperSettingManager extends PluginSettingTab {
             this.activeTab = "transparency";
             this.display();
           });
-      });
+      });      
 
     const contentContainer = containerEl.createDiv({
       cls: "live-wallpaper-settings-content",

@@ -11,11 +11,13 @@ import { DEFAULT_SETTINGS }  from "../main";
 import SettingsUtils from "./SettingsUtils";
 import WallpaperConfigUtils from "../WallpaperConfigUtils";
 import { openFilePicker } from "../FilePicker/filePicker";
+
 const positions = new Map<number, string>([
   [100, 'Right'],
   [0, 'Left'],
   [50, 'Center'],
 ]);
+
 export class SettingsApp extends PluginSettingTab {
   plugin: LiveWallpaperPlugin;
   constructor(app: App, plugin: LiveWallpaperPlugin) {

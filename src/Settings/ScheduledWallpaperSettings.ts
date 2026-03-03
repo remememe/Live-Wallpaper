@@ -8,6 +8,16 @@ import { UpdatePaths, GetFileName } from "../Wallpaper/mediaUtils";
 import { openFilePicker } from "../FilePicker/filePicker";
 import { removeFileIfUnused } from "../FilePicker/fileUtils";
 import { toggleModalStyles } from "../Styles/ModalStyles";
+
+const WALLPAPER_INTERVALS: Record<string, string> = {
+	"00:01": "Every 1 minute",
+	"00:05": "Every 5 minutes",
+	"00:10": "Every 10 minutes",
+	"00:30": "Every 30 minutes",
+	"01:00": "Every 1 hour",
+	"custom": "Custom interval",
+};
+
 export class ScheduledApp extends PluginSettingTab {
 	plugin: LiveWallpaperPlugin;
 
@@ -294,85 +304,6 @@ export class ScheduledApp extends PluginSettingTab {
 			);
 
 		if (this.plugin.settings.ScheduledOptions.autoSwitch) {
-			this.plugin.settings.WallpaperConfigs.slice(10,this.plugin.settings.WallpaperConfigs.length).forEach(Config => {
-				new Setting(containerEl)
-					.setName(`Wallpaper ${GetFileName(Config.path)}`)
-					.setDesc("Order in the automatic rotation")
-					.addButton((btn) =>
-						btn
-							.setIcon("folder-open")
-							.setTooltip("Browse for file")
-							.onClick(async (evt: MouseEvent) => {
-								const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
-								await openFilePicker(this.plugin,Config.Index,true,doc);
-								await Promise.all(
-									Array.from(this.plugin.windows).map(async (win) => {
-										await toggleModalStyles(win.document,this.plugin);
-									}
-								));
-								this.display();
-						})
-					)
-					.addExtraButton((btn) =>
-						btn
-							.setIcon("x")
-							.setTooltip("Remove")
-							.onClick(async () => {
-								await removeFileIfUnused(this.plugin,Config.Index,this.plugin.settings.WallpaperConfigs[Config.Index].path);
-								this.plugin.settings.WallpaperConfigs = WallpaperConfigUtils.RemoveConfig(this.plugin.settings.WallpaperConfigs,Config);
-								await this.plugin.saveSettings();
-								this.display();	
-						})
-					);
-			});
-			new Setting(containerEl).addButton((btn) =>
-				btn
-					.setButtonText("Add new element")
-					.setClass("text-arena-center-button")
-					.setTooltip("Add a new row to the table")
-					.onClick(async (evt) => {
-						const doc = (evt.currentTarget as HTMLElement).ownerDocument;
-						this.plugin.settings.WallpaperConfigs = WallpaperConfigUtils.NewConfig(this.plugin.settings.WallpaperConfigs);	
-						await openFilePicker(this.plugin,this.plugin.settings.WallpaperConfigs.length - 1,true,doc);
-						await Promise.all(
-							Array.from(this.plugin.windows).map(async (win) => {
-								await toggleModalStyles(win.document,this.plugin);
-							}
-						));
-						UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
-						await this.plugin.saveSettings();
-						this.display();
-					})
-				);
-			new Setting(containerEl)
-				.setName("Wallpaper folder")
-				.setDesc("Select a folder and load all wallpapers")
-				.addButton(btn =>
-					btn
-					.setIcon("folder")
-					.setButtonText("Select folder")
-					.onClick(async (evt) => {
-						const doc = (evt.currentTarget as HTMLElement).ownerDocument;
-						await this.plugin.openFolderPicker(doc);
-						await Promise.all(
-							Array.from(this.plugin.windows).map(async (win) => {
-								await toggleModalStyles(win.document,this.plugin);
-							}
-						));
-						UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
-						this.display();
-					})
-				);
-		}
-		const WALLPAPER_INTERVALS: Record<string, string> = {
-			"00:01": "Every 1 minute",
-			"00:05": "Every 5 minutes",
-			"00:10": "Every 10 minutes",
-			"00:30": "Every 30 minutes",
-			"01:00": "Every 1 hour",
-			"custom": "Custom interval",
-		};
-
 		const currentInterval = this.plugin.settings.ScheduledOptions.intervalCheckTime ?? "00:10";
 
 		new Setting(containerEl)
@@ -428,6 +359,76 @@ export class ScheduledApp extends PluginSettingTab {
 							new Notice("Custom interval applied.");
 						})
 				);
+			}
+			new Setting(containerEl)
+				.setName("Wallpaper folder")
+				.setDesc("Select a folder and load all wallpapers")
+				.addButton(btn =>
+					btn
+					.setIcon("folder")
+					.setButtonText("Select folder")
+					.onClick(async (evt) => {
+						const doc = (evt.currentTarget as HTMLElement).ownerDocument;
+						await this.plugin.openFolderPicker(doc);
+						await Promise.all(
+							Array.from(this.plugin.windows).map(async (win) => {
+								await toggleModalStyles(win.document,this.plugin);
+							}
+						));
+						UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
+						this.display();
+					})
+				);
+			new Setting(containerEl).addButton((btn) =>
+				btn
+					.setButtonText("Add new element")
+					.setClass("text-arena-center-button")
+					.setTooltip("Add a new row to the table")
+					.onClick(async (evt) => {
+						const doc = (evt.currentTarget as HTMLElement).ownerDocument;
+						this.plugin.settings.WallpaperConfigs = WallpaperConfigUtils.NewConfig(this.plugin.settings.WallpaperConfigs);	
+						await openFilePicker(this.plugin,this.plugin.settings.WallpaperConfigs.length - 1,true,doc);
+						await Promise.all(
+							Array.from(this.plugin.windows).map(async (win) => {
+								await toggleModalStyles(win.document,this.plugin);
+							}
+						));
+						UpdatePaths(this.plugin,{path: this.plugin.settings.currentWallpaper.path,type: this.plugin.settings.currentWallpaper.type});
+						await this.plugin.saveSettings();
+						this.display();
+					})
+				);
+			this.plugin.settings.WallpaperConfigs.slice(10,this.plugin.settings.WallpaperConfigs.length).forEach(Config => {
+				new Setting(containerEl)
+					.setName(`Wallpaper ${GetFileName(Config.path)}`)
+					.setDesc("Order in the automatic rotation")
+					.addButton((btn) =>
+						btn
+							.setIcon("folder-open")
+							.setTooltip("Browse for file")
+							.onClick(async (evt: MouseEvent) => {
+								const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
+								await openFilePicker(this.plugin,Config.Index,true,doc);
+								await Promise.all(
+									Array.from(this.plugin.windows).map(async (win) => {
+										await toggleModalStyles(win.document,this.plugin);
+									}
+								));
+								this.display();
+						})
+					)
+					.addExtraButton((btn) =>
+						btn
+							.setIcon("x")
+							.setTooltip("Remove")
+							.onClick(async () => {
+								await removeFileIfUnused(this.plugin,Config.Index,this.plugin.settings.WallpaperConfigs[Config.Index].path);
+								this.plugin.settings.WallpaperConfigs = WallpaperConfigUtils.RemoveConfig(this.plugin.settings.WallpaperConfigs,Config);
+								await this.plugin.saveSettings();
+								this.display();	
+						})
+					);
+			});
 		}
 	}
 }

@@ -1,11 +1,11 @@
 {
   "name": "livewallpaper",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "node esbuild.config.mjs",
-    "dev": "node esbuild.config.mjs --watch" 
+    "dev": "node esbuild.config.mjs --watch"
   },
   "keywords": [],
   "author": "",
@@ -16,7 +16,7 @@
     "@types/three": "^0.181.0",
     "@typescript-eslint/eslint-plugin": "^8.47.0",
     "@typescript-eslint/parser": "^8.47.0",
-    "esbuild": "^0.27.0",
+    "esbuild": "^0.28.1",
     "eslint": "^9.39.1",
     "obsidian": "^1.10.3",
     "prettier": "^3.6.2",

@@ -303,7 +303,6 @@ export class SettingsApp extends PluginSettingTab {
           slider
             .setLimits(0, 100, 1) 
             .setValue(this.plugin.settings.currentWallpaper.positionX) 
-            .setDynamicTooltip()
             .setInstant(true)
             .onChange(async (value) => {
               this.plugin.settings.currentWallpaper.positionX = value;
@@ -338,7 +337,6 @@ export class SettingsApp extends PluginSettingTab {
           slider
             .setLimits(0, 100, 1)
             .setValue(this.plugin.settings.currentWallpaper.positionY)
-            .setDynamicTooltip()
             .setInstant(true)
             .onChange(async (value) => {
               this.plugin.settings.currentWallpaper.positionY = value;
@@ -372,7 +370,6 @@ export class SettingsApp extends PluginSettingTab {
           slider
             .setLimits(0.5,2,0.1)
             .setValue(this.plugin.settings.currentWallpaper.Scale ?? 1)
-            .setDynamicTooltip()
             .setInstant(true)
             .onChange(async (value) => {
               this.plugin.settings.currentWallpaper.Scale = value;
@@ -458,7 +455,7 @@ export class SettingsApp extends PluginSettingTab {
          }) 
       })
       .addSlider((slider) => {
-        const valueEl = containerEl.createEl("span", {
+        const valueEl = containerEl.createSpan({
           text: ` ${this.plugin.settings.currentWallpaper.opacity}%`,
           cls: "setting-item-description",
         });
@@ -476,7 +473,6 @@ export class SettingsApp extends PluginSettingTab {
           .setLimits(0, 80, 1)
           .setValue(initialValue)
           .setDisabled(this.plugin.settings.AdnvOpend)
-          .setDynamicTooltip()
           .setInstant(true)
           .onChange(async (v) => {
             if (!this.plugin.settings.AdnvOpend) {
@@ -505,7 +501,7 @@ export class SettingsApp extends PluginSettingTab {
          }) 
       })
       .addSlider((slider) => {
-        const valueEl = containerEl.createEl("span", {
+        const valueEl = containerEl.createSpan({
           text: ` ${this.plugin.settings.currentWallpaper.blurRadius}px`,
           cls: "setting-item-description",
         });
@@ -538,7 +534,7 @@ export class SettingsApp extends PluginSettingTab {
          }) 
       })
       .addSlider((slider) => {
-        const valueEl = containerEl.createEl("span", {
+        const valueEl = containerEl.createSpan({
           text: ` ${this.plugin.settings.currentWallpaper.brightness}%`,
           cls: "setting-item-description",
         });
@@ -570,7 +566,7 @@ export class SettingsApp extends PluginSettingTab {
          }) 
       })
       .addSlider((slider) => {
-        const valueEl = containerEl.createEl("span", {
+        const valueEl = containerEl.createSpan({
           text: ` ${this.plugin.settings.currentWallpaper.contrast}%`,
           cls: "setting-item-description",
         });
@@ -606,7 +602,7 @@ export class SettingsApp extends PluginSettingTab {
          }) 
       })
       .addSlider((slider) => {
-        const valueEl = containerEl.createEl("span", {
+        const valueEl = containerEl.createSpan({
           text: ` ${this.plugin.settings.currentWallpaper.zIndex}`,
           cls: "setting-item-description",
         });
@@ -659,7 +655,7 @@ export class SettingsApp extends PluginSettingTab {
           });
       });
     if (Platform.isMobileApp) {
-      const desc = document.createElement("div");
+      const desc = createDiv();
       desc.textContent =
         "On mobile devices, zooming can affect background size. You can manually set the height and width to maintain consistency.";
 

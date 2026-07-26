@@ -17,7 +17,7 @@ export default class SettingsUtils {
 		if (trimmed === "") return false;
 
 		try {
-			document.createDocumentFragment().querySelector(trimmed);
+			createFragment().querySelector(trimmed);
 			return true;
 		} catch {
 			return false;
@@ -46,7 +46,7 @@ export default class SettingsUtils {
 	}
 	static async applyImagePosition(element: HTMLImageElement | HTMLVideoElement,posXPercent: number,posYPercent: number,scaleFactor: number) {
 		if (element.parentElement === null) return;
-		const container = element.parentElement!;
+		const container = element.parentElement;
 		const containerWidth = container.clientWidth;
 		const containerHeight = container.clientHeight;
 		const isImage = element.tagName === "IMG";

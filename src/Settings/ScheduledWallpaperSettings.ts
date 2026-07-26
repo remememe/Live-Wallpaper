@@ -86,7 +86,7 @@ export class ScheduledApp extends PluginSettingTab {
 						.setTooltip("Browse for file")
 						.onClick((evt: MouseEvent) => {
 							const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
-							openFilePicker(this.plugin,2,true,doc)
+							openFilePicker(this.plugin,2,true,doc).catch;
 				}));
 			let dayTimeValue =
 				this.plugin.settings.ScheduledOptions.dayStartTime;

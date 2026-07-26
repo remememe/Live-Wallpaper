@@ -107,7 +107,7 @@ export interface LiveWallpaperPluginSettings {
   migrated?: boolean; 
 }
 export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
-  LatestVersion: '1.6.5',
+  LatestVersion: '1.6.6',
 
   currentWallpaper: defaultWallpaper,
   globalConfig: {
@@ -163,7 +163,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     await this.ensureWallpaperFolderExists();
     if (this.isVersionLess(this.settings.LatestVersion, '1.5.1')) {
       await Migrate.migrateOldSettings(this as any);
-      this.settings.LatestVersion = '1.6.5';
+      this.settings.LatestVersion = '1.6.6';
       await this.saveSettings();
     }
 
@@ -186,9 +186,9 @@ export default class LiveWallpaperPlugin extends Plugin {
       }
     });
     this.registerEvent(
-      this.app.workspace.on('window-open', (win, winWindow) => {
+      this.app.workspace.on('window-open', async (win, winWindow) => {
         this.windows.add(winWindow);
-        this.initWallpaperForWindow(winWindow.document);
+        await this.initWallpaperForWindow(winWindow.document);
       })
     );
 
@@ -198,8 +198,8 @@ export default class LiveWallpaperPlugin extends Plugin {
       })
     );
     this.registerEvent(
-      this.app.workspace.on('css-change', () => {
-        ApplyManager.applyWallpaper(this,anyOptionEnabled, window.document);
+      this.app.workspace.on('css-change',async () => {
+        await ApplyManager.applyWallpaper(this,anyOptionEnabled, window.document);
       })
     );
     for (const win of this.windows) {
@@ -217,7 +217,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     }
     ChangeWallpaperContainer(doc,{width: this.settings.mobileBackgroundWidth,height: this.settings.mobileBackgroundHeight});
     removeExistingWallpaperElements(doc);
-    toggleModalStyles(doc,this);
+    await toggleModalStyles(doc,this);
 
     const newContainer = createWallpaperContainer(doc,this.settings.currentWallpaper,this.settings.AdnvOpend);
     const appContainer = doc.querySelector('.app-container');
@@ -226,7 +226,7 @@ export default class LiveWallpaperPlugin extends Plugin {
 
     doc.body.classList.add('live-wallpaper-active');
 
-    ApplyManager.applyWallpaper(this,false, doc);
+    await ApplyManager.applyWallpaper(this,false, doc);
     UpdatePaths(this,{path: this.settings.currentWallpaper.path,type: this.settings.currentWallpaper.type});
     await applyBackgroundColor(doc,this.settings.AdnvOpend,this.settings.Color);
 
@@ -234,8 +234,8 @@ export default class LiveWallpaperPlugin extends Plugin {
       SettingsUtils.enableReposition(this,doc);
       const media = doc.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
       if (media && media.parentElement) {
-        const reposition = () => {
-          SettingsUtils.applyImagePosition(
+        const reposition = async () => {
+          await SettingsUtils.applyImagePosition(
             media,
             this.settings.currentWallpaper.positionX,
             this.settings.currentWallpaper.positionY,
@@ -317,7 +317,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     doc.body.classList.add('live-wallpaper-active');
     if (this.settings.currentWallpaper.Reposition) {
       await waitForMediaDimensions(newMedia!);
-      SettingsUtils.applyImagePosition(
+      await SettingsUtils.applyImagePosition(
         newMedia!,
         this.settings.currentWallpaper.positionX,
         this.settings.currentWallpaper.positionY,

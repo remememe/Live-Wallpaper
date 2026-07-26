@@ -45,9 +45,9 @@ export class TransparencySettingsTab extends PluginSettingTab {
       toggleTransparencyButton.setText(this.plugin.settings.AdnvOpend ? "Hide transparency options" : "Show transparency options");
       for (const win of this.plugin.windows) {
         await toggleModalStyles(win.document,this.plugin);
-        WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
+        await WallpaperApplier.applyWallpaper(this.plugin,false,win.document);
       }
-      this.plugin.saveSettings();
+      await this.plugin.saveSettings();
       this.display();
     };
 
@@ -66,7 +66,7 @@ export class TransparencySettingsTab extends PluginSettingTab {
       "• attribute: <code>--col-txt-titlebars</code><br><br>" +
       "You can inspect elements and variables using browser dev tools (CTRL + SHIFT + I) to discover more attributes to adjust.";
 
-    const tableContainer = transparencyOptionsContainer.createEl("div", {
+    const tableContainer = transparencyOptionsContainer.createDiv({
       cls: "text-arena-table-container",
     });
     const table = tableContainer.createEl("table", { cls: "text-arena-table" });
@@ -87,7 +87,7 @@ export class TransparencySettingsTab extends PluginSettingTab {
           }
           this.plugin.settings.TextArenas[index].attribute = value;
           for (const win of this.plugin.windows) {
-            await LoadOrUnloadChanges(win.document,this.plugin.settings.TextArenas,true);
+            LoadOrUnloadChanges(win.document,this.plugin.settings.TextArenas,true);
             ApplyChanges(win.document,this.plugin.settings.TextArenas,index);
           }
           await this.plugin.saveSettings(); 
@@ -99,7 +99,7 @@ export class TransparencySettingsTab extends PluginSettingTab {
         btn
           .setIcon("cross")
           .setTooltip("Remove this entry")
-          .onClick(() => {
+          .onClick(async () => {
             for (const win of this.plugin.windows) {
               RemoveChanges(win.document,this.plugin.settings.TextArenas,index);
             }
@@ -107,7 +107,7 @@ export class TransparencySettingsTab extends PluginSettingTab {
             for (const win of this.plugin.windows) {
               LoadOrUnloadChanges(win.document,this.plugin.settings.TextArenas,true);
             }
-            this.plugin.saveSettings();
+            await this.plugin.saveSettings();
             this.display();
           });
       });
@@ -137,7 +137,7 @@ export class TransparencySettingsTab extends PluginSettingTab {
             this.plugin.settings.Color = value;
             await this.plugin.saveSettings();
             for (const win of this.plugin.windows) {
-              applyBackgroundColor(win.document,this.plugin.settings.AdnvOpend,this.plugin.settings.Color);
+              await applyBackgroundColor(win.document,this.plugin.settings.AdnvOpend,this.plugin.settings.Color);
             }
           });
       })
@@ -149,7 +149,7 @@ export class TransparencySettingsTab extends PluginSettingTab {
             this.plugin.settings.Color = "";
             await this.plugin.saveSettings();
             for (const win of this.plugin.windows) {
-              applyBackgroundColor(win.document,this.plugin.settings.AdnvOpend,this.plugin.settings.Color);
+              await applyBackgroundColor(win.document,this.plugin.settings.AdnvOpend,this.plugin.settings.Color);
             }
             if (colorPickerRef) {
               colorPickerRef.setValue("#000000");
@@ -189,7 +189,6 @@ export class TransparencySettingsTab extends PluginSettingTab {
             .setValue(this.plugin.settings.modalStyle.blurRadius)
             .setLimits(0, 30, 1)
             .setInstant(true)
-            .setDynamicTooltip()
             .onChange(async (value) => {
               this.plugin.settings.modalStyle.blurRadius = value;
               for (const win of this.plugin.windows) {
@@ -207,7 +206,6 @@ export class TransparencySettingsTab extends PluginSettingTab {
             .setValue(this.plugin.settings.modalStyle.dimOpacity * 100)
             .setLimits(0, 100, 5)
             .setInstant(true)
-            .setDynamicTooltip()
             .onChange(async (value) => {
               this.plugin.settings.modalStyle.dimOpacity = value / 100;
               for (const win of this.plugin.windows) {

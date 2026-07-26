@@ -10,7 +10,7 @@ export default class WallpaperConfigUtils {
 			if(index == undefined)
 			{
 				Plugin.settings.WallpaperConfigs = WallpaperConfigUtils.NewConfig(Plugin.settings.WallpaperConfigs);
-				Plugin.saveSettings();
+				await Plugin.saveSettings();
 				return Plugin.settings.WallpaperConfigs[Plugin.settings.WallpaperConfigs.length - 1];
 			}
 			if(Settings.globalConfig.enabled)

@@ -43,7 +43,7 @@ export async function waitForMediaDimensions(element: HTMLImageElement | HTMLVid
     }),
 
     new Promise<void>((resolve) =>
-        setTimeout(() => resolve(), timeout)
+        window.setTimeout(() => resolve(), timeout)
     )
     ]);
 }

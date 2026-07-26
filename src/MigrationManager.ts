@@ -1,4 +1,4 @@
-import {defaultWallpaper} from "./main";
+import LiveWallpaperPlugin, {defaultWallpaper} from "./main";
 export default class Migrate {
     static async migrateOldSettings(Plugin: any) {
         const settings = Plugin.settings;
@@ -7,17 +7,17 @@ export default class Migrate {
         if (!scheduled || typeof scheduled !== "object") {
             return;
         }
-        if (Array.isArray((scheduled as any).wallpaperPaths)) {
-            const oldPaths = (scheduled as any).wallpaperPaths;
+        if (Array.isArray((scheduled).wallpaperPaths)) {
+            const oldPaths = (scheduled).wallpaperPaths;
 
             scheduled.wallpaperDayPaths = [oldPaths[0] ?? "", oldPaths[1] ?? ""];
             scheduled.wallpaperWeekPaths = oldPaths.slice(2, 9);
 
-            delete (scheduled as any).wallpaperPaths;
+            delete (scheduled).wallpaperPaths;
         }
 
-        if (Array.isArray((scheduled as any).wallpaperTypes)) {
-            const oldTypes = (scheduled as any).wallpaperTypes as ('image' | 'video' | 'gif')[];
+        if (Array.isArray((scheduled).wallpaperTypes)) {
+            const oldTypes = (scheduled).wallpaperTypes as ('image' | 'video' | 'gif')[];
 
             scheduled.wallpaperDayTypes = [
             this.isValidWallpaperType(oldTypes[0]) ? oldTypes[0] : 'image',
@@ -25,7 +25,7 @@ export default class Migrate {
             ];
             scheduled.wallpaperWeekTypes = oldTypes.slice(2, 9).map(t => t ?? "image");
 
-            delete (scheduled as any).wallpaperTypes;
+            delete (scheduled).wallpaperTypes;
         }
 
         const pluginDir = `${Plugin.app.vault.configDir}/plugins/${Plugin.manifest.id}`;

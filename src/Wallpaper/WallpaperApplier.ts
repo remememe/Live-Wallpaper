@@ -62,10 +62,10 @@ export default class WallpaperApplier {
 		container.appendChild(newMedia);
 
 		await new Promise<void>((resolve) =>
-			requestAnimationFrame(() => resolve()),
+			window.requestAnimationFrame(() => resolve()),
 		);
 
-		await new Promise((resolve) => setTimeout(resolve, 20));
+		await new Promise((resolve) => window.setTimeout(resolve, 20));
 
 		const medias = container.querySelectorAll(
 			'[id^="live-wallpaper-media"]',
@@ -78,7 +78,7 @@ export default class WallpaperApplier {
 				htmlEl.style.opacity = "0";
 				newMedia.style.opacity = "1";
 
-				setTimeout(() => {
+				window.setTimeout(() => {
 					if (htmlEl.parentElement) {
 						htmlEl.remove();
 					}

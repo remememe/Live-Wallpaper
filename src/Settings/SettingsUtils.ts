@@ -44,7 +44,7 @@ export default class SettingsUtils {
 	static async wallpaperExists(plugin: LiveWallpaperPlugin,path: string): Promise<boolean> {
 		return await plugin.app.vault.adapter.exists(path);
 	}
-	static async applyImagePosition(element: HTMLImageElement | HTMLVideoElement,posXPercent: number,posYPercent: number,scaleFactor: number) {
+	static applyImagePosition(element: HTMLImageElement | HTMLVideoElement,posXPercent: number,posYPercent: number,scaleFactor: number) {
 		if (element.parentElement === null) return;
 		const container = element.parentElement;
 		const containerWidth = container.clientWidth;

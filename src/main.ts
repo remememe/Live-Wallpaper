@@ -107,7 +107,7 @@ export interface LiveWallpaperPluginSettings {
   migrated?: boolean; 
 }
 export const DEFAULT_SETTINGS: LiveWallpaperPluginSettings = {
-  LatestVersion: '1.6.7',
+  LatestVersion: '1.6.8',
 
   currentWallpaper: defaultWallpaper,
   globalConfig: {
@@ -163,7 +163,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     await this.ensureWallpaperFolderExists();
     if (this.isVersionLess(this.settings.LatestVersion, '1.5.1')) {
       await Migrate.migrateOldSettings(this as any);
-      this.settings.LatestVersion = '1.6.7';
+      this.settings.LatestVersion = '1.6.8';
       await this.saveSettings();
     }
 
@@ -234,8 +234,8 @@ export default class LiveWallpaperPlugin extends Plugin {
       SettingsUtils.enableReposition(this,doc);
       const media = doc.getElementById('live-wallpaper-media') as HTMLImageElement | HTMLVideoElement;
       if (media && media.parentElement) {
-        const reposition = async () => {
-          await SettingsUtils.applyImagePosition(
+        const reposition = () => {
+          SettingsUtils.applyImagePosition(
             media,
             this.settings.currentWallpaper.positionX,
             this.settings.currentWallpaper.positionY,
@@ -317,7 +317,7 @@ export default class LiveWallpaperPlugin extends Plugin {
     doc.body.classList.add('live-wallpaper-active');
     if (this.settings.currentWallpaper.Reposition) {
       await waitForMediaDimensions(newMedia!);
-      await SettingsUtils.applyImagePosition(
+      SettingsUtils.applyImagePosition(
         newMedia!,
         this.settings.currentWallpaper.positionX,
         this.settings.currentWallpaper.positionY,
@@ -449,7 +449,7 @@ export default class LiveWallpaperPlugin extends Plugin {
 
   public stopDayNightWatcher() {
     if (this._dayNightInterval) {
-      clearInterval(this._dayNightInterval);
+      window.clearInterval(this._dayNightInterval);
       this._dayNightInterval = -1;
     }
   }

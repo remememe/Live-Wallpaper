@@ -37,12 +37,12 @@ export default class WallpaperApplier {
 			if (newPath !== plugin.lastPath || newType !== plugin.lastType) {
 				const newMedia = await createMediaElement(doc,plugin);
 				if (newMedia) {
-					WallpaperApplier.applyNewMedia(newMedia, container);
+					await WallpaperApplier.applyNewMedia(newMedia, container);
 					media = newMedia;
 				}
 			}
 			if (plugin.settings.currentWallpaper.Reposition) {
-				await SettingsUtils.applyImagePosition(
+				SettingsUtils.applyImagePosition(
 					media,
 					plugin.settings.currentWallpaper.positionX,
 					plugin.settings.currentWallpaper.positionY,

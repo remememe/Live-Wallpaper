@@ -74,7 +74,7 @@ export class ScheduledApp extends PluginSettingTab {
 						.setTooltip("Browse for file")
 						.onClick((evt: MouseEvent) => {
 							const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
-							openFilePicker(this.plugin,1,true,doc)
+							openFilePicker(this.plugin,1,true,doc).catch;
 				}));
 
 			new Setting(containerEl)
@@ -226,7 +226,7 @@ export class ScheduledApp extends PluginSettingTab {
 							const doc = (evt.currentTarget as HTMLElement).ownerDocument; 
 							const index = daysOfWeek.indexOf(selectedDay);
 							if (index !== -1) {
-								openFilePicker(this.plugin,index + 3,true,doc);
+								openFilePicker(this.plugin,index + 3,true,doc).catch;
 							} 
 							else {
 								console.warn("Invalid day selected");

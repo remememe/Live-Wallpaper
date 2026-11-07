@@ -378,7 +378,7 @@ export class SettingsApp extends PluginSettingTab {
                 Array.from(this.plugin.windows).map(async (win) => {
                   const media = win.document.getElementById('live-wallpaper-media') as HTMLImageElement;
                   if (media) {
-                    await SettingsUtils.applyImagePosition(
+                    SettingsUtils.applyImagePosition(
                       media,
                       this.plugin.settings.currentWallpaper.positionX,
                       this.plugin.settings.currentWallpaper.positionY,
